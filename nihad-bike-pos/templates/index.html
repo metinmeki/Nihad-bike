@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NIHAD BIKE</title>
+<style>
+  :root{
+    --bg:#F7F3EA; --ink:#1E2B22; --green:#5A9C74; --green-dark:#3E7856;
+    --gold-soft:#E8D9A8; --danger:#B54A3F; --card:#FFFFFF; --line:#E7E0CE; --muted:#8B9690;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",Tahoma,Arial,sans-serif;}
+  .header{background:var(--card);border-bottom:1px solid var(--line);padding:18px 20px 12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+  .brand{display:flex;align-items:center;gap:12px;}
+  .brand-icon{background:var(--green);color:#fff;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;}
+  .brand-name{font-size:18px;font-weight:700;}
+  .brand-sub{font-size:11px;color:var(--muted);}
+  .gear{width:100%;height:12px;display:flex;}
+  .gear div{flex:1;height:12px;background:var(--green);}
+  .gear div:nth-child(even){opacity:.35;}
+  .lang-toggle{display:flex;border:1px solid #DCD4BC;border-radius:999px;overflow:hidden;}
+  .lang-toggle button{border:none;background:transparent;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;color:var(--ink);}
+  .lang-toggle button.active{background:var(--ink);color:#fff;}
+  .low-badge{display:flex;align-items:center;gap:6px;font-size:12px;background:#FBE9E5;color:var(--danger);padding:6px 12px;border-radius:999px;}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;padding:16px 20px 0;}
+  .tab-btn{padding:9px 16px;border-radius:10px;font-size:14px;font-weight:600;border:none;cursor:pointer;background:#EFE9D9;color:var(--ink);}
+  .tab-btn.active{background:var(--ink);color:var(--bg);}
+  .content{padding:20px;}
+  .grid{display:grid;gap:12px;}
+  .grid.stats{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}
+  .odometer{background:var(--ink);border-radius:10px;padding:12px 16px;}
+  .odometer .label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-soft);margin-bottom:4px;}
+  .odometer .value{font-family:"Consolas","Courier New",monospace;font-size:22px;color:#B9E8CB;}
+  .odometer .value.danger{color:#E7897A;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;}
+  .card-title{padding:12px 16px;font-weight:700;border-bottom:1px solid var(--line);}
+  .stat-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;flex:1;min-width:150px;}
+  .stat-card .lbl{font-size:11px;text-transform:uppercase;color:var(--green-dark);font-weight:600;margin-bottom:6px;}
+  .stat-card .val{font-size:19px;font-weight:700;}
+  .stats-row{display:flex;gap:12px;flex-wrap:wrap;}
+  table{width:100%;border-collapse:collapse;}
+  th{text-align:start;font-size:11px;text-transform:uppercase;color:var(--muted);padding:8px 10px;border-bottom:2px solid var(--line);}
+  td{padding:10px;border-bottom:1px solid #F0EBDC;font-size:14px;}
+  .empty{padding:24px;text-align:center;color:var(--muted);font-size:14px;}
+  input,select{border:1px solid #DCD4BC;border-radius:8px;padding:8px 10px;font-size:14px;background:#fff;color:var(--ink);width:100%;outline:none;font-family:inherit;}
+  input:focus,select:focus{border-color:var(--green);}
+  .btn{background:var(--green-dark);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-weight:700;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;justify-content:center;width:100%;}
+  .btn:hover{opacity:.9;}
+  .btn.ghost{background:#EFE9D9;color:var(--ink);}
+  .btn-sm{padding:5px 10px;font-size:12px;border-radius:6px;border:none;cursor:pointer;}
+  .form-row{display:flex;flex-direction:column;gap:10px;margin-bottom:10px;}
+  .form-row.two{flex-direction:row;gap:10px;}
+  .two > *{flex:1;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.2);}
+  .toast.danger{background:var(--danger);}
+  .low-item{font-size:12px;background:#fff;color:var(--danger);padding:4px 10px;border-radius:999px;}
+  .low-box{background:#FBE9E5;border:1px solid #F0C9C0;border-radius:12px;padding:14px;}
+  .low-title{display:flex;align-items:center;gap:6px;color:var(--danger);font-weight:700;font-size:14px;margin-bottom:8px;}
+  .search-box{display:flex;align-items:center;gap:8px;padding:10px;}
+  .search-box input{border:none;padding:4px;}
+  .result-row{width:100%;text-align:start;background:none;border:none;padding:8px 12px;font-size:14px;cursor:pointer;display:flex;justify-content:space-between;border-bottom:1px solid #F0EBDC;}
+  .result-row:hover{background:var(--bg);}
+  .two-col{display:grid;grid-template-columns:1fr;gap:16px;}
+  @media(min-width:900px){.two-col{grid-template-columns:2fr 1fr;}.inv-col{grid-template-columns:1fr 2fr;}}
+  .inv-col{display:grid;grid-template-columns:1fr;gap:16px;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="brand">
+    <div class="brand-icon">&#128690;</div>
+    <div>
+      <div class="brand-name">NIHAD BIKE</div>
+      <div class="brand-sub" id="brandSub"></div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div id="lowBadge"></div>
+    <div class="lang-toggle">
+      <button id="langAr" onclick="setLang('ar')">العربية</button>
+      <button id="langKu" onclick="setLang('ku')">Kurdî</button>
+    </div>
+  </div>
+</div>
+<div class="gear" id="gear"></div>
+<div class="tabs" id="tabs"></div>
+<div class="content" id="content"></div>
+<div id="toastHost"></div>
+
+<script>
+const T = {
+  ar: {
+    dir:"rtl", brandSub:"سجل المخزون والمبيعات",
+    tabs:{dashboard:"لوحة التحكم",inventory:"المخزون",sell:"بيع جديد",buy:"شراء جديد"},
+    lowStockBadge:n=>`${n} مواد منخفضة`,
+    stat:{revenue:"إجمالي المبيعات",cost:"إجمالي الكلفة",profit:"صافي الربح",stockValue:"قيمة المخزون",
+      itemsTracked:"عدد المواد",salesRecorded:"عدد المبيعات",purchasesLogged:"عدد المشتريات"},
+    lowStockTitle:"مخزون منخفض — يحتاج تزويد", left:n=>`متبقي ${n}`,
+    recentSales:"آخر المبيعات", noSales:'لا توجد مبيعات بعد. سجّلها من "بيع جديد".',
+    col:{date:"التاريخ",items:"المواد",total:"المجموع",profit:"الربح",name:"الاسم",model:"الموديل",cost:"الشراء",price:"البيع",qty:"الكمية"},
+    inv:{addTitle:"إضافة مادة جديدة",editTitle:"تعديل المادة",namePh:"اسم المادة (مثال: دساكة بريك)",modelPh:"رقم الموديل",
+      costPh:"سعر الشراء",pricePh:"سعر البيع",qtyPh:"الكمية في المخزون",save:"حفظ التعديلات",add:"إضافة",
+      search:"بحث عن مادة...",empty:"لا توجد مواد بعد — أضف أول مادة.",fillAll:"أدخل الاسم والشراء والبيع والكمية",
+      updated:"تم تعديل المادة",added:"تمت إضافة المادة",removed:"تم حذف المادة",edit:"تعديل",cancel:"إلغاء"},
+    sale:{search:"ابحث عن مادة للبيع...",inStock:"متوفر",price:"سعر",cartEmpty:"السلة فارغة — ابحث عن مادة أعلاه.",
+      total:"مجموع الفاتورة",profit:"الربح من هذه العملية",complete:"إتمام البيع",alreadyIn:"موجودة في السلة مسبقاً",
+      outOfStock:n=>`${n} غير متوفرة حالياً`,pickOne:"أضف مادة واحدة على الأقل",onlyLeft:(max,n)=>`يوجد فقط ${max} من ${n}`,
+      qtyMore:"يجب أن تكون الكمية أكثر من صفر",recorded:p=>`تم تسجيل البيع — الربح ${money(p)}`},
+    buy:{restock:"تزويد مادة موجودة",newItem:"شراء مادة جديدة",pick:"اختر مادة...",qtyBoughtPh:"الكمية المشتراة",
+      costUnitPh:"سعر الشراء للقطعة",record:"تسجيل الشراء",needNamePrice:"أدخل الاسم وسعر البيع للمادة الجديدة",
+      needQtyCost:"أدخل الكمية وسعر الشراء",needPick:"اختر مادة",restocked:(n,name)=>`تمت إضافة ${n} إلى ${name}`,
+      stocked:name=>`تم تسجيل مادة جديدة: ${name}`},
+    receipt:{print:"طباعة الفاتورة"},
+    loading:"جاري تحميل بيانات المتجر…", saveFail:"تعذر الحفظ — تحقق من الخادم المحلي",
+  },
+  ku: {
+    dir:"ltr", brandSub:"Tomara Depo û Firotinê",
+    tabs:{dashboard:"Panela Sereke",inventory:"Depo",sell:"Firotina Nû",buy:"Kirîna Nû"},
+    lowStockBadge:n=>`${n} materyal kêm`,
+    stat:{revenue:"Tevahiya Firotinê",cost:"Tevahiya Lêçûnê",profit:"Qezenca Xwerû",stockValue:"Nirxa Depo",
+      itemsTracked:"Hejmara Materyalan",salesRecorded:"Hejmara Firotinan",purchasesLogged:"Hejmara Kirînan"},
+    lowStockTitle:"Depo Kêm — hewceyî tijîkirinê", left:n=>`${n} maye`,
+    recentSales:"Firotinên Dawî", noSales:'Hê firotin tune ye. Ji "Firotina Nû" tomar bike.',
+    col:{date:"Roj",items:"Materyal",total:"Tevahî",profit:"Qezenc",name:"Nav",model:"Model",cost:"Kirîn",price:"Firotin",qty:"Hejmar"},
+    inv:{addTitle:"Zêdekirina Materyalek Nû",editTitle:"Sererastkirina Materyalê",namePh:"Navê materyalê",modelPh:"Numreya Model",
+      costPh:"Bihayê Kirînê",pricePh:"Bihayê Firotinê",qtyPh:"Hejmar li Depo",save:"Guhertinan Tomar bike",add:"Zêde bike",
+      search:"Materyalekê bigere...",empty:"Hê materyal tune ye — yekem lê zêde bike.",fillAll:"Nav, bihayê kirînê, bihayê firotinê û hejmarê binivîse",
+      updated:"Materyal hat sererastkirin",added:"Materyal hat zêdekirin",removed:"Materyal hat jêbirin",edit:"Serrast bike",cancel:"Betal bike"},
+    sale:{search:"Ji bo firotinê materyalekê bigere...",inStock:"li Depo",price:"Biha",cartEmpty:"Sepet vala ye — li jor materyalekê bigere.",
+      total:"Tevahiya Firotinê",profit:"Qezenc ji vê Firotinê",complete:"Firotinê Temam bike",alreadyIn:"Berê li sepetê ye",
+      outOfStock:n=>`${n} li Depo nemaye`,pickOne:"Kêmasî materyalek zêde bike",onlyLeft:(max,n)=>`Tenê ${max} ji ${n} maye`,
+      qtyMore:"Divê hejmar ji sifir zêdetir be",recorded:p=>`Firotin hat tomarkirin — Qezenc ${money(p)}`},
+    buy:{restock:"Depo ya Materyalek Heyî Zêde bike",newItem:"Kirîna Materyalek Nû",pick:"Materyalê hilbijêre...",
+      qtyBoughtPh:"Hejmara Kirî",costUnitPh:"Bihayê Kirînê ya Yekê",record:"Kirînê Tomar bike",
+      needNamePrice:"Navê û bihayê firotinê yê materyalê nû binivîse",needQtyCost:"Hejmar û bihayê kirînê binivîse",
+      needPick:"Materyalekê hilbijêre",restocked:(n,name)=>`${n} li ${name} hat zêdekirin`,stocked:name=>`Materyalek nû hat tomarkirin: ${name}`},
+    receipt:{print:"Fatûreyê Çap bike"},
+    loading:"Daneyên firotgehê tên barkirin…", saveFail:"Tomarkirin serneket — Serverê herêmî kontrol bike",
+  }
+};
+
+let lang = localStorage.getItem("nb-lang") || "ar";
+let tab = "dashboard";
+let db = {items:[],sales:[],purchases:[]};
+let cart = [];
+const LOW_STOCK = 5;
+
+function money(n){ n = Number(n)||0; return n.toLocaleString(undefined,{maximumFractionDigits:0}); }
+function t(){ return T[lang]; }
+function esc(s){ const d=document.createElement("div"); d.innerText = s==null?"":s; return d.innerHTML; }
+
+function setLang(l){
+  lang = l; localStorage.setItem("nb-lang", l);
+  document.documentElement.lang = l==="ar" ? "ar" : "ku";
+  document.documentElement.dir = t().dir;
+  render();
+}
+
+function showToast(msg, tone){
+  const host = document.getElementById("toastHost");
+  host.innerHTML = `<div class="toast ${tone==='danger'?'danger':''}">${esc(msg)}</div>`;
+  setTimeout(()=>{ host.innerHTML=""; }, 2200);
+}
+
+async function loadState(){
+  const res = await fetch("/api/state");
+  db = await res.json();
+}
+
+function stats(){
+  const revenue = db.sales.reduce((s,x)=>s+x.total,0);
+  const profit = db.sales.reduce((s,x)=>s+x.profit,0);
+  const cost = revenue - profit;
+  const stockValue = db.items.reduce((s,x)=>s+x.qty*x.cost,0);
+  const lowStock = db.items.filter(x=>x.qty<=LOW_STOCK);
+  return {revenue,profit,cost,stockValue,lowStock};
+}
+
+function renderHeader(){
+  document.getElementById("brandSub").innerText = t().brandSub;
+  document.getElementById("langAr").className = lang==="ar" ? "active" : "";
+  document.getElementById("langKu").className = lang==="ku" ? "active" : "";
+  const st = stats();
+  document.getElementById("lowBadge").innerHTML = st.lowStock.length
+    ? `<div class="low-badge">&#9888; ${esc(t().lowStockBadge(st.lowStock.length))}</div>` : "";
+  document.getElementById("gear").innerHTML = Array.from({length:24}).map((_,i)=>"<div></div>").join("");
+}
+
+function renderTabs(){
+  const tabs = [
+    {id:"dashboard", label: t().tabs.dashboard},
+    {id:"inventory", label: t().tabs.inventory},
+    {id:"sell", label: t().tabs.sell},
+    {id:"buy", label: t().tabs.buy},
+  ];
+  document.getElementById("tabs").innerHTML = tabs.map(tb=>
+    `<button class="tab-btn ${tab===tb.id?'active':''}" onclick="switchTab('${tb.id}')">${esc(tb.label)}</button>`
+  ).join("");
+}
+
+function switchTab(id){ tab = id; cart = []; render(); }
+
+function render(){
+  renderHeader();
+  renderTabs();
+  const c = document.getElementById("content");
+  if (tab==="dashboard") c.innerHTML = renderDashboard();
+  if (tab==="inventory") c.innerHTML = renderInventory();
+  if (tab==="sell") c.innerHTML = renderSell();
+  if (tab==="buy") c.innerHTML = renderBuy();
+  if (tab==="inventory") bindInventory();
+  if (tab==="sell") bindSell();
+  if (tab==="buy") bindBuy();
+}
+
+function odometer(value,label,tone){
+  return `<div class="odometer"><div class="label">${esc(label)}</div>
+    <div class="value ${tone==='danger'?'danger':''}">${money(Math.round(value))} <span style="font-size:11px;opacity:.6;">IQD</span></div></div>`;
+}
+
+function renderDashboard(){
+  const s = stats();
+  const recent = [...db.sales].reverse().slice(0,6);
+  const rows = recent.length ? recent.map(sale=>{
+    const items = sale.lines.map(l=>`${esc(l.name)} ×${l.qty}`).join(", ");
+    const d = new Date(sale.date);
+    return `<tr><td>${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</td>
+      <td>${items}</td><td>${money(sale.total)}</td>
+      <td style="color:var(--green-dark);font-weight:700;">${money(sale.profit)}</td>
+      <td><button class="btn-sm ghost" onclick="printSale(${sale.id})">&#128438;</button></td></tr>`;
+  }).join("") : `<div class="empty">${esc(t().noSales)}</div>`;
+
+  return `
+  <div class="grid stats" style="margin-bottom:16px;">
+    ${odometer(s.revenue, t().stat.revenue)}
+    ${odometer(s.cost, t().stat.cost, 'danger')}
+    ${odometer(s.profit, t().stat.profit)}
+    ${odometer(s.stockValue, t().stat.stockValue)}
+  </div>
+  <div class="stats-row" style="margin-bottom:16px;">
+    <div class="stat-card"><div class="lbl">${esc(t().stat.itemsTracked)}</div><div class="val">${db.items.length}</div></div>
+    <div class="stat-card"><div class="lbl">${esc(t().stat.salesRecorded)}</div><div class="val">${db.sales.length}</div></div>
+    <div class="stat-card"><div class="lbl">${esc(t().stat.purchasesLogged)}</div><div class="val">${db.purchases.length}</div></div>
+  </div>
+  ${s.lowStock.length ? `<div class="low-box" style="margin-bottom:16px;">
+    <div class="low-title">&#9888; ${esc(t().lowStockTitle)}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+      ${s.lowStock.map(i=>`<span class="low-item">${esc(i.name)} — ${esc(t().left(i.qty))}</span>`).join("")}
+    </div></div>` : ""}
+  <div class="card">
+    <div class="card-title">${esc(t().recentSales)}</div>
+    ${recent.length ? `<table><thead><tr><th>${esc(t().col.date)}</th><th>${esc(t().col.items)}</th><th>${esc(t().col.total)}</th><th>${esc(t().col.profit)}</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : rows}
+  </div>`;
+}
+
+function renderInventory(){
+  const query = window.__invQuery || "";
+  const filtered = db.items.filter(i => (i.name+" "+(i.model||"")).toLowerCase().includes(query.toLowerCase()));
+  const editing = window.__editingId;
+  const f = window.__invForm || {name:"",model:"",cost:"",price:"",qty:""};
+  const rows = filtered.length ? filtered.map(i=>`
+    <tr>
+      <td>${esc(i.name)}</td>
+      <td style="color:var(--muted);">${esc(i.model)||"—"}</td>
+      <td>${money(i.cost)}</td>
+      <td>${money(i.price)}</td>
+      <td style="color:${i.qty<=LOW_STOCK?'var(--danger)':'var(--ink)'};font-weight:${i.qty<=LOW_STOCK?700:400};">${i.qty}</td>
+      <td>
+        <div style="display:flex;gap:6px;">
+          <button class="btn-sm ghost" onclick="editItem(${i.id})">${esc(t().inv.edit)}</button>
+          <button class="btn-sm" style="background:#FBE9E5;color:var(--danger);" onclick="deleteItem(${i.id})">&#128465;</button>
+        </div>
+      </td>
+    </tr>`).join("") : `<div class="empty">${esc(t().inv.empty)}</div>`;
+
+  return `
+  <div class="inv-col">
+    <form class="card" id="itemForm" style="padding:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-weight:700;margin-bottom:10px;">
+        <span>${editing ? esc(t().inv.editTitle) : esc(t().inv.addTitle)}</span>
+        ${editing ? `<button type="button" onclick="cancelEdit()" style="background:none;border:none;cursor:pointer;color:var(--muted);">&#10005;</button>` : ""}
+      </div>
+      <div class="form-row">
+        <input id="f_name" placeholder="${esc(t().inv.namePh)}" value="${esc(f.name)}">
+        <input id="f_model" placeholder="${esc(t().inv.modelPh)}" value="${esc(f.model)}">
+        <div class="form-row two">
+          <input id="f_cost" type="number" placeholder="${esc(t().inv.costPh)}" value="${esc(f.cost)}">
+          <input id="f_price" type="number" placeholder="${esc(t().inv.pricePh)}" value="${esc(f.price)}">
+        </div>
+        <input id="f_qty" type="number" placeholder="${esc(t().inv.qtyPh)}" value="${esc(f.qty)}">
+      </div>
+      <button class="btn" type="submit">+ ${editing ? esc(t().inv.save) : esc(t().inv.add)}</button>
+    </form>
+    <div class="card">
+      <div class="search-box">
+        &#128269; <input id="invSearch" placeholder="${esc(t().inv.search)}" value="${esc(query)}">
+      </div>
+      ${filtered.length ? `<div style="overflow-x:auto;"><table><thead><tr><th>${esc(t().col.name)}</th><th>${esc(t().col.model)}</th><th>${esc(t().col.cost)}</th><th>${esc(t().col.price)}</th><th>${esc(t().col.qty)}</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : rows}
+    </div>
+  </div>`;
+}
+
+function bindInventory(){
+  document.getElementById("invSearch").oninput = e => { window.__invQuery = e.target.value; render(); };
+  document.getElementById("itemForm").onsubmit = async e => {
+    e.preventDefault();
+    const name = document.getElementById("f_name").value.trim();
+    const model = document.getElementById("f_model").value.trim();
+    const cost = document.getElementById("f_cost").value;
+    const price = document.getElementById("f_price").value;
+    const qty = document.getElementById("f_qty").value;
+    if (!name || cost==="" || price==="" || qty===""){ showToast(t().inv.fillAll, "danger"); return; }
+    const payload = {name, model, cost, price, qty};
+    if (window.__editingId){
+      await fetch(`/api/items/${window.__editingId}`, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
+      showToast(t().inv.updated);
+    } else {
+      await fetch("/api/items", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
+      showToast(t().inv.added);
+    }
+    window.__editingId = null; window.__invForm = null;
+    await loadState(); render();
+  };
+}
+
+function editItem(id){
+  const item = db.items.find(i=>i.id===id);
+  window.__editingId = id;
+  window.__invForm = {name:item.name, model:item.model, cost:String(item.cost), price:String(item.price), qty:String(item.qty)};
+  render();
+}
+function cancelEdit(){ window.__editingId = null; window.__invForm = null; render(); }
+async function deleteItem(id){
+  await fetch(`/api/items/${id}`, {method:"DELETE"});
+  showToast(t().inv.removed);
+  await loadState(); render();
+}
+
+function renderSell(){
+  const query = window.__sellQuery || "";
+  const results = query ? db.items.filter(i=>(i.name+" "+(i.model||"")).toLowerCase().includes(query.toLowerCase())) : [];
+  const resultsHtml = results.length ? `<div class="card" style="margin-top:8px;">${results.map(i=>`
+    <button class="result-row" onclick="addToCart(${i.id})">
+      <span>${esc(i.name)} <span style="color:var(--muted);">${esc(i.model)}</span></span>
+      <span style="color:${i.qty<=LOW_STOCK?'var(--danger)':'var(--green-dark)'};">${i.qty} ${esc(t().sale.inStock)} · ${money(i.price)} IQD</span>
+    </button>`).join("")}</div>` : "";
+
+  const cartRows = cart.length ? cart.map((l,idx)=>`
+    <tr>
+      <td>${esc(l.name)}</td>
+      <td><input type="number" min="1" max="${l.maxQty}" value="${l.qty}" style="width:70px;" onchange="updateCartQty(${idx}, this.value)"></td>
+      <td><input type="number" value="${l.price}" style="width:100px;" onchange="updateCartPrice(${idx}, this.value)"></td>
+      <td>${money(l.price*l.qty)}</td>
+      <td><button onclick="removeCartLine(${idx})" style="background:none;border:none;cursor:pointer;color:var(--danger);">&#128465;</button></td>
+    </tr>`).join("") : `<div class="empty">${esc(t().sale.cartEmpty)}</div>`;
+
+  const total = cart.reduce((s,l)=>s+Number(l.price||0)*Number(l.qty||0),0);
+  const profit = cart.reduce((s,l)=>s+(Number(l.price||0)-Number(l.cost||0))*Number(l.qty||0),0);
+
+  return `
+  <div class="two-col">
+    <div>
+      <div class="card" style="padding:12px;">
+        <div class="search-box" style="padding:0;">&#128269; <input id="sellSearch" placeholder="${esc(t().sale.search)}" value="${esc(query)}"></div>
+        ${resultsHtml}
+      </div>
+      <div class="card" style="margin-top:12px;">
+        ${cart.length ? `<table><thead><tr><th>${esc(t().col.items)}</th><th>${esc(t().col.qty)}</th><th>${esc(t().sale.price)}</th><th>${esc(t().col.total)}</th><th></th></tr></thead><tbody>${cartRows}</tbody></table>` : cartRows}
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      ${odometer(total, t().sale.total)}
+      ${odometer(profit, t().sale.profit)}
+      <button class="btn" onclick="checkout()">&#128722; ${esc(t().sale.complete)}</button>
+      ${db.sales.length ? `<button class="btn ghost" onclick="printSale(${db.sales[db.sales.length-1].id})">&#128438; ${esc(t().receipt.print)}</button>` : ""}
+    </div>
+  </div>`;
+}
+
+function bindSell(){
+  document.getElementById("sellSearch").oninput = e => { window.__sellQuery = e.target.value; render(); };
+}
+
+function addToCart(itemId){
+  const item = db.items.find(i=>i.id===itemId);
+  if (item.qty<=0){ showToast(t().sale.outOfStock(item.name), "danger"); return; }
+  if (cart.find(l=>l.itemId===itemId)){ showToast(t().sale.alreadyIn); return; }
+  cart.push({itemId:item.id, name:item.name, qty:1, price:item.price, cost:item.cost, maxQty:item.qty});
+  window.__sellQuery = "";
+  render();
+}
+function updateCartQty(idx, val){ cart[idx].qty = val; render(); }
+function updateCartPrice(idx, val){ cart[idx].price = val; render(); }
+function removeCartLine(idx){ cart.splice(idx,1); render(); }
+
+async function checkout(){
+  if (!cart.length){ showToast(t().sale.pickOne, "danger"); return; }
+  for (const l of cart){
+    if (Number(l.qty) > l.maxQty){ showToast(t().sale.onlyLeft(l.maxQty, l.name), "danger"); return; }
+    if (Number(l.qty) <= 0){ showToast(t().sale.qtyMore, "danger"); return; }
+  }
+  const payload = { lines: cart.map(l=>({itemId:l.itemId, qty:l.qty, price:l.price})) };
+  const res = await fetch("/api/sales", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
+  const data = await res.json();
+  if (data.error){ showToast(data.error, "danger"); return; }
+  showToast(t().sale.recorded(data.profit));
+  cart = [];
+  await loadState(); render();
+}
+
+function printSale(id){ window.open(`/receipt/${id}?lang=${lang}`, "_blank"); }
+
+function renderBuy(){
+  const mode = window.__buyMode || "existing";
+  const f = window.__buyForm || {itemId:"", qty:"", cost:"", newName:"", newModel:"", newPrice:""};
+  return `
+  <div style="max-width:520px;">
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <button class="tab-btn ${mode==='existing'?'active':''}" onclick="setBuyMode('existing')">${esc(t().buy.restock)}</button>
+      <button class="tab-btn ${mode==='new'?'active':''}" onclick="setBuyMode('new')">${esc(t().buy.newItem)}</button>
+    </div>
+    <form class="card" id="buyForm" style="padding:16px;">
+      ${mode==='existing' ? `
+        <div class="form-row">
+          <select id="b_itemId">
+            <option value="">${esc(t().buy.pick)}</option>
+            ${db.items.map(i=>`<option value="${i.id}" ${String(i.id)===String(f.itemId)?'selected':''}>${esc(i.name)} ${i.model?`(${esc(i.model)})`:''} — ${i.qty}</option>`).join("")}
+          </select>
+        </div>` : `
+        <div class="form-row">
+          <input id="b_name" placeholder="${esc(t().inv.namePh)}" value="${esc(f.newName)}">
+          <input id="b_model" placeholder="${esc(t().inv.modelPh)}" value="${esc(f.newModel)}">
+          <input id="b_price" type="number" placeholder="${esc(t().inv.pricePh)}" value="${esc(f.newPrice)}">
+        </div>`}
+      <div class="form-row two">
+        <input id="b_qty" type="number" placeholder="${esc(t().buy.qtyBoughtPh)}" value="${esc(f.qty)}">
+        <input id="b_cost" type="number" placeholder="${esc(t().buy.costUnitPh)}" value="${esc(f.cost)}">
+      </div>
+      <button class="btn" type="submit">&#8595; ${esc(t().buy.record)}</button>
+    </form>
+  </div>`;
+}
+
+function setBuyMode(mode){ window.__buyMode = mode; render(); }
+
+function bindBuy(){
+  document.getElementById("buyForm").onsubmit = async e => {
+    e.preventDefault();
+    const mode = window.__buyMode || "existing";
+    const qty = document.getElementById("b_qty").value;
+    const cost = document.getElementById("b_cost").value;
+    if (!qty || !cost || Number(qty)<=0){ showToast(t().buy.needQtyCost, "danger"); return; }
+    let payload;
+    if (mode==="existing"){
+      const itemId = document.getElementById("b_itemId").value;
+      if (!itemId){ showToast(t().buy.needPick, "danger"); return; }
+      payload = {mode:"existing", itemId, qty, cost};
+    } else {
+      const name = document.getElementById("b_name").value.trim();
+      const model = document.getElementById("b_model").value.trim();
+      const price = document.getElementById("b_price").value;
+      if (!name || !price){ showToast(t().buy.needNamePrice, "danger"); return; }
+      payload = {mode:"new", name, model, price, qty, cost};
+    }
+    const res = await fetch("/api/purchases", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
+    const data = await res.json();
+    if (data.error){ showToast(data.error, "danger"); return; }
+    showToast(mode==="existing" ? t().buy.restocked(qty, data.name) : t().buy.stocked(data.name));
+    window.__buyForm = null;
+    await loadState(); render();
+  };
+}
+
+(async function init(){
+  document.documentElement.dir = t().dir;
+  document.getElementById("content").innerHTML = `<div class="empty">${esc(t().loading)}</div>`;
+  await loadState();
+  render();
+})();
+</script>
+</body>
+</html>

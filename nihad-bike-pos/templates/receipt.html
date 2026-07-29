@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="{{ 'ar' if lang == 'ar' else 'ku' }}" dir="{{ 'rtl' if lang == 'ar' else 'ltr' }}">
+<head>
+<meta charset="UTF-8">
+<title>NIHAD BIKE — {{ 'فاتورة' if lang == 'ar' else 'Fatûre' }}</title>
+<style>
+  body{font-family:"Segoe UI",Tahoma,Arial,sans-serif;color:#1E2B22;padding:24px;max-width:720px;margin:0 auto;}
+  .head{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #5A9C74;padding-bottom:12px;margin-bottom:16px;}
+  .brand{font-size:22px;font-weight:700;}
+  .sub{font-size:12px;color:#666;}
+  .meta{text-align:end;font-size:13px;}
+  .title{font-size:16px;font-weight:700;margin-bottom:10px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{padding:8px;border:1px solid #DCD4BC;}
+  th{background:#EFE9D9;}
+  td.c{text-align:center;}
+  .totalsrow{margin-top:14px;display:flex;justify-content:space-between;font-size:13px;}
+  .grand{margin-top:6px;text-align:end;font-size:18px;font-weight:700;border-top:2px solid #1E2B22;padding-top:8px;}
+  .prep{margin-top:26px;font-size:12px;color:#666;}
+  .print-btn{margin-top:20px;background:#3E7856;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-weight:700;cursor:pointer;font-size:14px;}
+  @media print { .print-btn{ display:none; } }
+</style>
+</head>
+<body>
+  {% if lang == 'ar' %}
+  <div class="head">
+    <div><div class="brand">NIHAD BIKE</div><div class="sub">سجل المخزون والمبيعات</div></div>
+    <div class="meta">
+      <div>رقم الفاتورة: {{ '%06d' % sale.id }}</div>
+      <div>التاريخ: {{ sale.date }}</div>
+    </div>
+  </div>
+  <div class="title">فاتورة بيع</div>
+  <table>
+    <thead><tr><th>ت</th><th>اسم المادة</th><th>الموديل</th><th>العدد</th><th>السعر</th><th>المجموع</th></tr></thead>
+    <tbody>
+      {% for l in sale.lines %}
+      <tr>
+        <td class="c">{{ loop.index }}</td>
+        <td>{{ l.name }}</td>
+        <td class="c">{{ l.model or "—" }}</td>
+        <td class="c">{{ l.qty }}</td>
+        <td class="c">{{ "{:,.0f}".format(l.price) }}</td>
+        <td class="c">{{ "{:,.0f}".format(l.price * l.qty) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="totalsrow">
+    <div>عدد المواد: {{ sale.lines | sum(attribute='qty') }}</div>
+    <div>الدفع: نقدي</div>
+  </div>
+  <div class="grand">المجموع الكلي: {{ "{:,.0f}".format(sale.total) }} د.ع</div>
+  <div class="prep">المجهز: ______________</div>
+  {% else %}
+  <div class="head">
+    <div><div class="brand">NIHAD BIKE</div><div class="sub">Tomara Depo û Firotinê</div></div>
+    <div class="meta">
+      <div>Hejmara Fatûreyê: {{ '%06d' % sale.id }}</div>
+      <div>Roj: {{ sale.date }}</div>
+    </div>
+  </div>
+  <div class="title">Fatûreya Firotinê</div>
+  <table>
+    <thead><tr><th>#</th><th>Navê Materyalê</th><th>Model</th><th>Hejmar</th><th>Biha</th><th>Tevahî</th></tr></thead>
+    <tbody>
+      {% for l in sale.lines %}
+      <tr>
+        <td class="c">{{ loop.index }}</td>
+        <td>{{ l.name }}</td>
+        <td class="c">{{ l.model or "—" }}</td>
+        <td class="c">{{ l.qty }}</td>
+        <td class="c">{{ "{:,.0f}".format(l.price) }}</td>
+        <td class="c">{{ "{:,.0f}".format(l.price * l.qty) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="totalsrow">
+    <div>Hejmara Materyalan: {{ sale.lines | sum(attribute='qty') }}</div>
+    <div>Dayîn: Peran e</div>
+  </div>
+  <div class="grand">Tevahiya Giştî: {{ "{:,.0f}".format(sale.total) }} IQD</div>
+  <div class="prep">Amadekar: ______________</div>
+  {% endif %}
+
+  <button class="print-btn" onclick="window.print()">{{ 'طباعة' if lang == 'ar' else 'Çap bike' }}</button>
+</body>
+</html>
