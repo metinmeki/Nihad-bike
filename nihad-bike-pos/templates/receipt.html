@@ -57,9 +57,13 @@
   </table>
   <div class="totalsrow">
     <div>عدد المواد: {{ sale.lines | sum(attribute='qty') }}</div>
-    <div>الدفع: نقدي</div>
+    <div>{% if sale.paid < sale.total %}دين على العميل{% else %}الدفع: نقدي{% endif %}</div>
   </div>
   <div class="grand">المجموع الكلي: {{ "{:,.0f}".format(sale.total) }} د.ع</div>
+  {% if sale.paid < sale.total %}
+  <div style="text-align:end;font-size:14px;margin-top:4px;">الواصل: {{ "{:,.0f}".format(sale.paid) }} د.ع</div>
+  <div style="text-align:end;font-size:16px;font-weight:700;color:#B54A3F;margin-top:2px;">الباقي: {{ "{:,.0f}".format(sale.total - sale.paid) }} د.ع</div>
+  {% endif %}
   <div class="prep">المجهز: ______________</div>
 
   <button class="print-btn" onclick="window.print()">طباعة</button>

@@ -115,6 +115,15 @@ def init_db():
             role TEXT NOT NULL DEFAULT 'cashier',
             created_at TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS debt_payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            client_id INTEGER NOT NULL,
+            amount REAL NOT NULL,
+            date TEXT NOT NULL,
+            note TEXT,
+            FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE
+        );
         """
     )
     db.commit()
@@ -124,6 +133,10 @@ def init_db():
         db.execute("ALTER TABLE sales ADD COLUMN client_id INTEGER")
     if not column_exists(db, "sales", "client_name"):
         db.execute("ALTER TABLE sales ADD COLUMN client_name TEXT")
+    if not column_exists(db, "sales", "paid"):
+        db.execute("ALTER TABLE sales ADD COLUMN paid REAL")
+        # Historical sales predate debt tracking - treat them as fully settled.
+        db.execute("UPDATE sales SET paid = total WHERE paid IS NULL")
     db.commit()
 
     # First run: create a default admin account so there is always a way in.
@@ -155,6 +168,7 @@ def row_to_sale(r, lines):
         "date": r["date"],
         "total": r["total"],
         "profit": r["profit"],
+        "paid": r["paid"] if r["paid"] is not None else r["total"],
         "clientId": r["client_id"],
         "clientName": r["client_name"] or "",
         "lines": [
@@ -236,8 +250,10 @@ def api_state():
     purchases = [] if not is_admin else [dict(r) for r in db.execute("SELECT * FROM purchases ORDER BY id")]
     clients = [dict(r) for r in db.execute("SELECT * FROM clients ORDER BY name")]
     expenses = [] if not is_admin else [dict(r) for r in db.execute("SELECT * FROM expenses ORDER BY id")]
+    debt_payments = [dict(r) for r in db.execute("SELECT * FROM debt_payments ORDER BY id")]
     return jsonify({
         "items": items, "sales": sales, "purchases": purchases, "clients": clients, "expenses": expenses,
+        "debtPayments": debt_payments,
         "currentUser": {"username": session["username"], "role": session["role"]},
     })
 
@@ -402,6 +418,39 @@ def delete_expense(expense_id):
     return jsonify({"ok": True})
 
 
+@app.route("/api/debt-payments", methods=["POST"])
+@login_required
+def add_debt_payment():
+    data = request.get_json(force=True)
+    client_id = data.get("clientId")
+    try:
+        amount = float(data.get("amount"))
+    except (TypeError, ValueError):
+        amount = 0
+    if not client_id or amount <= 0:
+        return jsonify({"error": "a client and a positive amount are required"}), 400
+    db = get_db()
+    client = db.execute("SELECT * FROM clients WHERE id=?", (client_id,)).fetchone()
+    if client is None:
+        return jsonify({"error": "client not found"}), 404
+    cur = db.execute(
+        "INSERT INTO debt_payments (client_id, amount, date, note) VALUES (?, ?, ?, ?)",
+        (client_id, amount, datetime.now().isoformat(), data.get("note") or ""),
+    )
+    db.commit()
+    return jsonify({"id": cur.lastrowid})
+
+
+@app.route("/api/debt-payments/<int:payment_id>", methods=["DELETE"])
+@login_required
+@admin_required
+def delete_debt_payment(payment_id):
+    db = get_db()
+    db.execute("DELETE FROM debt_payments WHERE id=?", (payment_id,))
+    db.commit()
+    return jsonify({"ok": True})
+
+
 @app.route("/api/sales", methods=["POST"])
 @login_required
 def add_sale():
@@ -439,9 +488,18 @@ def add_sale():
         resolved.append({"item": item, "qty": qty, "price": price})
 
     now = datetime.now().isoformat()
+    paid = data.get("paid")
+    paid = total if paid is None else float(paid)
+    if paid < 0:
+        paid = 0
+    if paid > total:
+        paid = total
+    if paid < total and not client_id:
+        return jsonify({"error": "a client must be selected to record a debt (partial payment)"}), 400
+
     cur = db.execute(
-        "INSERT INTO sales (date, total, profit, client_id, client_name) VALUES (?, ?, ?, ?, ?)",
-        (now, total, profit, client_id, client_name),
+        "INSERT INTO sales (date, total, profit, client_id, client_name, paid) VALUES (?, ?, ?, ?, ?, ?)",
+        (now, total, profit, client_id, client_name, paid),
     )
     sale_id = cur.lastrowid
 
