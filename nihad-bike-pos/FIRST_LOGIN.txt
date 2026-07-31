@@ -1,6 +1,0 @@
-Nihad Bike POS - first login
------------------------------
-Username: admin
-Password: kgdkX-J9aTFq
-
-Log in, then create real accounts and delete this file.
