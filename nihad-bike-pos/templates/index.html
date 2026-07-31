@@ -11,17 +11,14 @@
   }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",Tahoma,Arial,sans-serif;}
-  .header{background:var(--card);border-bottom:1px solid var(--line);padding:18px 20px 12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+  .header{background:var(--card);border-bottom:1px solid var(--line);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
   .brand{display:flex;align-items:center;gap:12px;}
-  .brand-icon{background:var(--green);color:#fff;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;}
+  .brand img{height:44px;width:auto;}
   .brand-name{font-size:18px;font-weight:700;}
   .brand-sub{font-size:11px;color:var(--muted);}
   .gear{width:100%;height:12px;display:flex;}
   .gear div{flex:1;height:12px;background:var(--green);}
   .gear div:nth-child(even){opacity:.35;}
-  .lang-toggle{display:flex;border:1px solid #DCD4BC;border-radius:999px;overflow:hidden;}
-  .lang-toggle button{border:none;background:transparent;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;color:var(--ink);}
-  .lang-toggle button.active{background:var(--ink);color:#fff;}
   .low-badge{display:flex;align-items:center;gap:6px;font-size:12px;background:#FBE9E5;color:var(--danger);padding:6px 12px;border-radius:999px;}
   .tabs{display:flex;gap:8px;flex-wrap:wrap;padding:16px 20px 0;}
   .tab-btn{padding:9px 16px;border-radius:10px;font-size:14px;font-weight:600;border:none;cursor:pointer;background:#EFE9D9;color:var(--ink);}
@@ -64,24 +61,44 @@
   .two-col{display:grid;grid-template-columns:1fr;gap:16px;}
   @media(min-width:900px){.two-col{grid-template-columns:2fr 1fr;}.inv-col{grid-template-columns:1fr 2fr;}}
   .inv-col{display:grid;grid-template-columns:1fr;gap:16px;}
+  .eye-btn{background:none;border:none;cursor:pointer;padding:2px 4px;color:var(--muted);font-size:14px;}
+  .cost-hidden{letter-spacing:2px;color:var(--muted);}
+  .th-with-eye{display:flex;align-items:center;gap:4px;}
+  .client-row{width:100%;text-align:start;background:none;border:none;padding:10px 12px;cursor:pointer;display:flex;justify-content:space-between;border-bottom:1px solid #F0EBDC;font-size:14px;}
+  .client-row:hover{background:var(--bg);}
+  .menu-trigger{display:inline-flex;align-items:center;gap:8px;width:auto;}
+  .mb-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:30;}
+  .sidebar{position:fixed;top:0;inset-inline-start:0;height:100%;width:250px;background:var(--ink);color:#fff;z-index:31;
+    box-shadow:-8px 0 24px rgba(0,0,0,.25);display:flex;flex-direction:column;padding:20px 0;overflow-y:auto;}
+  .sidebar-brand{padding:0 20px 18px;border-bottom:1px solid rgba(255,255,255,.12);margin-bottom:10px;}
+  .sidebar-brand .name{font-size:17px;font-weight:700;color:#fff;}
+  .sidebar-brand .sub{font-size:11px;color:var(--gold-soft);margin-top:2px;}
+  .sidebar-item{display:flex;align-items:center;gap:10px;padding:13px 20px;background:none;border:none;cursor:pointer;
+    color:#DCE6DF;font-size:14px;width:100%;text-align:start;border-inline-start:3px solid transparent;}
+  .sidebar-item:hover{background:rgba(255,255,255,.06);}
+  .sidebar-item.active{background:rgba(255,255,255,.08);color:#fff;font-weight:700;border-inline-start-color:var(--green);}
+  .sidebar-icon{font-size:16px;width:20px;text-align:center;}
+  .user-badge{display:flex;align-items:center;gap:8px;font-size:13px;}
+  .role-tag{font-size:10px;padding:3px 8px;border-radius:999px;font-weight:700;}
+  .role-tag.admin{background:#E8D9A8;color:#6B5A16;}
+  .role-tag.cashier{background:#DCEFE3;color:var(--green-dark);}
+  .logout-link{color:var(--muted);text-decoration:none;font-size:12px;}
+  .logout-link:hover{color:var(--danger);}
 </style>
 </head>
 <body>
 
 <div class="header">
   <div class="brand">
-    <div class="brand-icon">&#128690;</div>
+    <img src="/static/logo.png" alt="NIHAD BIKE">
     <div>
       <div class="brand-name">NIHAD BIKE</div>
-      <div class="brand-sub" id="brandSub"></div>
+      <div class="brand-sub">سجل المخزون والمبيعات</div>
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:10px;">
     <div id="lowBadge"></div>
-    <div class="lang-toggle">
-      <button id="langAr" onclick="setLang('ar')">العربية</button>
-      <button id="langKu" onclick="setLang('ku')">Kurdî</button>
-    </div>
+    <div id="userBadge"></div>
   </div>
 </div>
 <div class="gear" id="gear"></div>
@@ -90,72 +107,63 @@
 <div id="toastHost"></div>
 
 <script>
-const T = {
-  ar: {
-    dir:"rtl", brandSub:"سجل المخزون والمبيعات",
-    tabs:{dashboard:"لوحة التحكم",inventory:"المخزون",sell:"بيع جديد",buy:"شراء جديد"},
-    lowStockBadge:n=>`${n} مواد منخفضة`,
-    stat:{revenue:"إجمالي المبيعات",cost:"إجمالي الكلفة",profit:"صافي الربح",stockValue:"قيمة المخزون",
-      itemsTracked:"عدد المواد",salesRecorded:"عدد المبيعات",purchasesLogged:"عدد المشتريات"},
-    lowStockTitle:"مخزون منخفض — يحتاج تزويد", left:n=>`متبقي ${n}`,
-    recentSales:"آخر المبيعات", noSales:'لا توجد مبيعات بعد. سجّلها من "بيع جديد".',
-    col:{date:"التاريخ",items:"المواد",total:"المجموع",profit:"الربح",name:"الاسم",model:"الموديل",cost:"الشراء",price:"البيع",qty:"الكمية"},
-    inv:{addTitle:"إضافة مادة جديدة",editTitle:"تعديل المادة",namePh:"اسم المادة (مثال: دساكة بريك)",modelPh:"رقم الموديل",
-      costPh:"سعر الشراء",pricePh:"سعر البيع",qtyPh:"الكمية في المخزون",save:"حفظ التعديلات",add:"إضافة",
-      search:"بحث عن مادة...",empty:"لا توجد مواد بعد — أضف أول مادة.",fillAll:"أدخل الاسم والشراء والبيع والكمية",
-      updated:"تم تعديل المادة",added:"تمت إضافة المادة",removed:"تم حذف المادة",edit:"تعديل",cancel:"إلغاء"},
-    sale:{search:"ابحث عن مادة للبيع...",inStock:"متوفر",price:"سعر",cartEmpty:"السلة فارغة — ابحث عن مادة أعلاه.",
-      total:"مجموع الفاتورة",profit:"الربح من هذه العملية",complete:"إتمام البيع",alreadyIn:"موجودة في السلة مسبقاً",
-      outOfStock:n=>`${n} غير متوفرة حالياً`,pickOne:"أضف مادة واحدة على الأقل",onlyLeft:(max,n)=>`يوجد فقط ${max} من ${n}`,
-      qtyMore:"يجب أن تكون الكمية أكثر من صفر",recorded:p=>`تم تسجيل البيع — الربح ${money(p)}`},
-    buy:{restock:"تزويد مادة موجودة",newItem:"شراء مادة جديدة",pick:"اختر مادة...",qtyBoughtPh:"الكمية المشتراة",
-      costUnitPh:"سعر الشراء للقطعة",record:"تسجيل الشراء",needNamePrice:"أدخل الاسم وسعر البيع للمادة الجديدة",
-      needQtyCost:"أدخل الكمية وسعر الشراء",needPick:"اختر مادة",restocked:(n,name)=>`تمت إضافة ${n} إلى ${name}`,
-      stocked:name=>`تم تسجيل مادة جديدة: ${name}`},
-    receipt:{print:"طباعة الفاتورة"},
-    loading:"جاري تحميل بيانات المتجر…", saveFail:"تعذر الحفظ — تحقق من الخادم المحلي",
-  },
-  ku: {
-    dir:"ltr", brandSub:"Tomara Depo û Firotinê",
-    tabs:{dashboard:"Panela Sereke",inventory:"Depo",sell:"Firotina Nû",buy:"Kirîna Nû"},
-    lowStockBadge:n=>`${n} materyal kêm`,
-    stat:{revenue:"Tevahiya Firotinê",cost:"Tevahiya Lêçûnê",profit:"Qezenca Xwerû",stockValue:"Nirxa Depo",
-      itemsTracked:"Hejmara Materyalan",salesRecorded:"Hejmara Firotinan",purchasesLogged:"Hejmara Kirînan"},
-    lowStockTitle:"Depo Kêm — hewceyî tijîkirinê", left:n=>`${n} maye`,
-    recentSales:"Firotinên Dawî", noSales:'Hê firotin tune ye. Ji "Firotina Nû" tomar bike.',
-    col:{date:"Roj",items:"Materyal",total:"Tevahî",profit:"Qezenc",name:"Nav",model:"Model",cost:"Kirîn",price:"Firotin",qty:"Hejmar"},
-    inv:{addTitle:"Zêdekirina Materyalek Nû",editTitle:"Sererastkirina Materyalê",namePh:"Navê materyalê",modelPh:"Numreya Model",
-      costPh:"Bihayê Kirînê",pricePh:"Bihayê Firotinê",qtyPh:"Hejmar li Depo",save:"Guhertinan Tomar bike",add:"Zêde bike",
-      search:"Materyalekê bigere...",empty:"Hê materyal tune ye — yekem lê zêde bike.",fillAll:"Nav, bihayê kirînê, bihayê firotinê û hejmarê binivîse",
-      updated:"Materyal hat sererastkirin",added:"Materyal hat zêdekirin",removed:"Materyal hat jêbirin",edit:"Serrast bike",cancel:"Betal bike"},
-    sale:{search:"Ji bo firotinê materyalekê bigere...",inStock:"li Depo",price:"Biha",cartEmpty:"Sepet vala ye — li jor materyalekê bigere.",
-      total:"Tevahiya Firotinê",profit:"Qezenc ji vê Firotinê",complete:"Firotinê Temam bike",alreadyIn:"Berê li sepetê ye",
-      outOfStock:n=>`${n} li Depo nemaye`,pickOne:"Kêmasî materyalek zêde bike",onlyLeft:(max,n)=>`Tenê ${max} ji ${n} maye`,
-      qtyMore:"Divê hejmar ji sifir zêdetir be",recorded:p=>`Firotin hat tomarkirin — Qezenc ${money(p)}`},
-    buy:{restock:"Depo ya Materyalek Heyî Zêde bike",newItem:"Kirîna Materyalek Nû",pick:"Materyalê hilbijêre...",
-      qtyBoughtPh:"Hejmara Kirî",costUnitPh:"Bihayê Kirînê ya Yekê",record:"Kirînê Tomar bike",
-      needNamePrice:"Navê û bihayê firotinê yê materyalê nû binivîse",needQtyCost:"Hejmar û bihayê kirînê binivîse",
-      needPick:"Materyalekê hilbijêre",restocked:(n,name)=>`${n} li ${name} hat zêdekirin`,stocked:name=>`Materyalek nû hat tomarkirin: ${name}`},
-    receipt:{print:"Fatûreyê Çap bike"},
-    loading:"Daneyên firotgehê tên barkirin…", saveFail:"Tomarkirin serneket — Serverê herêmî kontrol bike",
-  }
+const CURRENT_USER = {{ user | tojson }};
+const AR = {
+  tabs:{dashboard:"لوحة التحكم",inventory:"المخزون",sell:"بيع جديد",buy:"شراء جديد",clients:"العملاء",expenses:"المصاريف",users:"المستخدمين"},
+  lowStockBadge:n=>`${n} مواد منخفضة`,
+  stat:{revenue:"إجمالي المبيعات",cost:"إجمالي الكلفة",profit:"صافي الربح",stockValue:"قيمة المخزون",
+    itemsTracked:"عدد المواد",salesRecorded:"عدد المبيعات",purchasesLogged:"عدد المشتريات"},
+  lowStockTitle:"مخزون منخفض — يحتاج تزويد", left:n=>`متبقي ${n}`,
+  recentSales:"آخر المبيعات", noSales:'لا توجد مبيعات بعد. سجّلها من "بيع جديد".',
+  col:{date:"التاريخ",items:"المواد",total:"المجموع",profit:"الربح",name:"الاسم",model:"الموديل",cost:"الشراء",price:"البيع",qty:"الكمية",client:"العميل"},
+  inv:{addTitle:"إضافة مادة جديدة",editTitle:"تعديل المادة",namePh:"اسم المادة (مثال: دساكة بريك)",modelPh:"رقم الموديل",
+    costPh:"سعر الشراء",pricePh:"سعر البيع",qtyPh:"الكمية في المخزون",save:"حفظ التعديلات",add:"إضافة",
+    search:"بحث عن مادة...",empty:"لا توجد مواد بعد — أضف أول مادة.",fillAll:"أدخل الاسم والشراء والبيع والكمية",
+    updated:"تم تعديل المادة",added:"تمت إضافة المادة",removed:"تم حذف المادة",edit:"تعديل",cancel:"إلغاء"},
+  sale:{search:"ابحث عن مادة للبيع...",inStock:"متوفر",price:"سعر",cartEmpty:"السلة فارغة — ابحث عن مادة أعلاه.",
+    total:"مجموع الفاتورة",profit:"الربح من هذه العملية",complete:"إتمام البيع",alreadyIn:"موجودة في السلة مسبقاً",
+    outOfStock:n=>`${n} غير متوفرة حالياً`,pickOne:"أضف مادة واحدة على الأقل",onlyLeft:(max,n)=>`يوجد فقط ${max} من ${n}`,
+    qtyMore:"يجب أن تكون الكمية أكثر من صفر",recorded:p=>`تم تسجيل البيع — الربح ${money(p)}`,recordedPlain:"تم تسجيل البيع بنجاح",
+    noClient:"بدون عميل (زبون عابر)"},
+  buy:{restock:"تزويد مادة موجودة",newItem:"شراء مادة جديدة",pick:"اختر مادة...",qtyBoughtPh:"الكمية المشتراة",
+    costUnitPh:"سعر الشراء للقطعة",record:"تسجيل الشراء",needNamePrice:"أدخل الاسم وسعر البيع للمادة الجديدة",
+    needQtyCost:"أدخل الكمية وسعر الشراء",needPick:"اختر مادة",restocked:(n,name)=>`تمت إضافة ${n} إلى ${name}`,
+    stocked:name=>`تم تسجيل مادة جديدة: ${name}`},
+  clients:{addTitle:"إضافة عميل جديد",namePh:"اسم العميل",phonePh:"رقم الهاتف",add:"إضافة العميل",
+    empty:"لا يوجد عملاء بعد.",search:"بحث عن عميل...",history:"سجل المشتريات",back:"رجوع",
+    added:"تمت إضافة العميل",updated:"تم تعديل العميل",removed:"تم حذف العميل",edit:"تعديل",
+    fillName:"أدخل اسم العميل",noHistory:"لا توجد مشتريات مسجلة لهذا العميل بعد."},
+  expenses:{addTitle:"إضافة مصروف",descPh:"وصف المصروف (مثال: إيجار، كهرباء)",amountPh:"المبلغ",
+    add:"إضافة المصروف",list:"سجل المصاريف",empty:"لا توجد مصاريف مسجلة بعد.",
+    added:"تمت إضافة المصروف",removed:"تم حذف المصروف",fillAll:"أدخل الوصف والمبلغ",
+    desc:"الوصف",amount:"المبلغ",total:"إجمالي المصاريف",netAfter:"صافي الربح بعد المصاريف"},
+  users:{addTitle:"إضافة مستخدم جديد",usernamePh:"اسم المستخدم",passwordPh:"كلمة المرور (٤ أحرف على الأقل)",
+    role:"الصلاحية",roleAdmin:"مدير",roleCashier:"كاشير",add:"إضافة المستخدم",empty:"لا يوجد مستخدمون بعد.",
+    added:"تمت إضافة المستخدم",removed:"تم حذف المستخدم",fillAll:"أدخل اسم المستخدم وكلمة مرور 4 أحرف على الأقل",
+    resetPassword:"تغيير كلمة المرور",newPasswordPrompt:"كلمة المرور الجديدة:",passwordUpdated:"تم تغيير كلمة المرور",
+    cannotDeleteSelf:"لا يمكنك حذف حسابك الحالي",lastAdmin:"لا يمكن حذف آخر مدير"},
+  role:{admin:"مدير",cashier:"كاشير"}, logout:"تسجيل الخروج",
+  noPermission:"هذا القسم متاح للمدير فقط.",
+  receipt:{print:"طباعة الفاتورة"},
+  loading:"جاري تحميل بيانات المتجر…", saveFail:"تعذر الحفظ — تحقق من الخادم المحلي",
 };
 
-let lang = localStorage.getItem("nb-lang") || "ar";
 let tab = "dashboard";
-let db = {items:[],sales:[],purchases:[]};
+let db = {items:[],sales:[],purchases:[],clients:[],expenses:[],users:[]};
 let cart = [];
+let costVisibleIds = new Set();
+let selectedClientId = "";
+let viewingClientId = null;
+let menuOpen = false;
 const LOW_STOCK = 5;
 
-function money(n){ n = Number(n)||0; return n.toLocaleString(undefined,{maximumFractionDigits:0}); }
-function t(){ return T[lang]; }
+function money(n){ n = Number(n)||0; return n.toLocaleString('en-US',{maximumFractionDigits:0}); }
+function isAdmin(){ return CURRENT_USER && CURRENT_USER.role === "admin"; }
+function t(){ return AR; }
 function esc(s){ const d=document.createElement("div"); d.innerText = s==null?"":s; return d.innerHTML; }
-
-function setLang(l){
-  lang = l; localStorage.setItem("nb-lang", l);
-  document.documentElement.lang = l==="ar" ? "ar" : "ku";
-  document.documentElement.dir = t().dir;
-  render();
+function fmtDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-GB') + " " + d.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
 }
 
 function showToast(msg, tone){
@@ -175,34 +183,67 @@ function stats(){
   const cost = revenue - profit;
   const stockValue = db.items.reduce((s,x)=>s+x.qty*x.cost,0);
   const lowStock = db.items.filter(x=>x.qty<=LOW_STOCK);
-  return {revenue,profit,cost,stockValue,lowStock};
+  const totalExpenses = db.expenses.reduce((s,e)=>s+e.amount,0);
+  const netAfterExpenses = profit - totalExpenses;
+  return {revenue,profit,cost,stockValue,lowStock,totalExpenses,netAfterExpenses};
 }
 
 function renderHeader(){
-  document.getElementById("brandSub").innerText = t().brandSub;
-  document.getElementById("langAr").className = lang==="ar" ? "active" : "";
-  document.getElementById("langKu").className = lang==="ku" ? "active" : "";
   const st = stats();
   document.getElementById("lowBadge").innerHTML = st.lowStock.length
     ? `<div class="low-badge">&#9888; ${esc(t().lowStockBadge(st.lowStock.length))}</div>` : "";
-  document.getElementById("gear").innerHTML = Array.from({length:24}).map((_,i)=>"<div></div>").join("");
+  document.getElementById("gear").innerHTML = Array.from({length:24}).map(()=>"<div></div>").join("");
+  if (CURRENT_USER){
+    document.getElementById("userBadge").innerHTML = `
+      <div class="user-badge">
+        <span>${esc(CURRENT_USER.username)}</span>
+        <span class="role-tag ${CURRENT_USER.role}">${esc(t().role[CURRENT_USER.role] || CURRENT_USER.role)}</span>
+        <a class="logout-link" href="/logout">${esc(t().logout)}</a>
+      </div>`;
+  }
 }
 
 function renderTabs(){
-  const tabs = [
-    {id:"dashboard", label: t().tabs.dashboard},
-    {id:"inventory", label: t().tabs.inventory},
-    {id:"sell", label: t().tabs.sell},
-    {id:"buy", label: t().tabs.buy},
+  let tabs = [
+    {id:"dashboard", label: t().tabs.dashboard, icon:"&#127968;"},
+    {id:"inventory", label: t().tabs.inventory, icon:"&#128230;"},
+    {id:"sell", label: t().tabs.sell, icon:"&#128722;"},
+    {id:"buy", label: t().tabs.buy, icon:"&#128229;", adminOnly:true},
+    {id:"clients", label: t().tabs.clients, icon:"&#128101;"},
+    {id:"expenses", label: t().tabs.expenses, icon:"&#128220;", adminOnly:true},
+    {id:"users", label: t().tabs.users, icon:"&#128100;", adminOnly:true},
   ];
-  document.getElementById("tabs").innerHTML = tabs.map(tb=>
-    `<button class="tab-btn ${tab===tb.id?'active':''}" onclick="switchTab('${tb.id}')">${esc(tb.label)}</button>`
-  ).join("");
+  if (!isAdmin()) tabs = tabs.filter(tb=>!tb.adminOnly);
+  const current = tabs.find(x=>x.id===tab) || tabs[0];
+  let sidebarHtml = "";
+  if (menuOpen){
+    sidebarHtml = `
+      <div class="mb-overlay" onclick="closeMenu()"></div>
+      <div class="sidebar">
+        <div class="sidebar-brand">
+          <div class="name">NIHAD BIKE</div>
+          <div class="sub">سجل المخزون والمبيعات</div>
+        </div>
+        ${tabs.map(tb=>`<button class="sidebar-item ${tab===tb.id?'active':''}" onclick="selectTab('${tb.id}')">
+          <span class="sidebar-icon">${tb.icon}</span> ${esc(tb.label)}
+        </button>`).join("")}
+      </div>`;
+  }
+  document.getElementById("tabs").innerHTML = `
+    <button class="tab-btn menu-trigger active" onclick="toggleMenu(event)">&#9776; ${esc(current.label)}</button>
+    ${sidebarHtml}`;
 }
 
-function switchTab(id){ tab = id; cart = []; render(); }
+function toggleMenu(e){ e.stopPropagation(); menuOpen = !menuOpen; render(); }
+function closeMenu(){ menuOpen = false; render(); }
+function selectTab(id){
+  tab = id; menuOpen = false; cart = []; viewingClientId = null;
+  if (id === "users" && isAdmin()){ loadUsers().then(render); } else { render(); }
+}
 
 function render(){
+  const adminOnlyTabs = ["buy","expenses","users"];
+  if (!isAdmin() && adminOnlyTabs.includes(tab)) tab = "dashboard";
   renderHeader();
   renderTabs();
   const c = document.getElementById("content");
@@ -210,9 +251,15 @@ function render(){
   if (tab==="inventory") c.innerHTML = renderInventory();
   if (tab==="sell") c.innerHTML = renderSell();
   if (tab==="buy") c.innerHTML = renderBuy();
+  if (tab==="clients") c.innerHTML = renderClients();
+  if (tab==="expenses") c.innerHTML = renderExpenses();
+  if (tab==="users") c.innerHTML = renderUsers();
   if (tab==="inventory") bindInventory();
   if (tab==="sell") bindSell();
   if (tab==="buy") bindBuy();
+  if (tab==="clients") bindClients();
+  if (tab==="expenses") bindExpenses();
+  if (tab==="users") bindUsers();
 }
 
 function odometer(value,label,tone){
@@ -222,27 +269,30 @@ function odometer(value,label,tone){
 
 function renderDashboard(){
   const s = stats();
+  const admin = isAdmin();
   const recent = [...db.sales].reverse().slice(0,6);
   const rows = recent.length ? recent.map(sale=>{
     const items = sale.lines.map(l=>`${esc(l.name)} ×${l.qty}`).join(", ");
-    const d = new Date(sale.date);
-    return `<tr><td>${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</td>
+    return `<tr><td>${fmtDate(sale.date)}</td>
+      <td>${esc(sale.clientName) || '—'}</td>
       <td>${items}</td><td>${money(sale.total)}</td>
-      <td style="color:var(--green-dark);font-weight:700;">${money(sale.profit)}</td>
+      ${admin ? `<td style="color:var(--green-dark);font-weight:700;">${money(sale.profit)}</td>` : ""}
       <td><button class="btn-sm ghost" onclick="printSale(${sale.id})">&#128438;</button></td></tr>`;
   }).join("") : `<div class="empty">${esc(t().noSales)}</div>`;
 
   return `
   <div class="grid stats" style="margin-bottom:16px;">
     ${odometer(s.revenue, t().stat.revenue)}
-    ${odometer(s.cost, t().stat.cost, 'danger')}
-    ${odometer(s.profit, t().stat.profit)}
-    ${odometer(s.stockValue, t().stat.stockValue)}
+    ${admin ? odometer(s.cost, t().stat.cost, 'danger') : ""}
+    ${admin ? odometer(s.profit, t().stat.profit) : ""}
+    ${admin ? odometer(s.stockValue, t().stat.stockValue) : ""}
+    ${admin ? odometer(s.totalExpenses, t().expenses.total, 'danger') : ""}
+    ${admin ? odometer(s.netAfterExpenses, t().expenses.netAfter) : ""}
   </div>
   <div class="stats-row" style="margin-bottom:16px;">
     <div class="stat-card"><div class="lbl">${esc(t().stat.itemsTracked)}</div><div class="val">${db.items.length}</div></div>
     <div class="stat-card"><div class="lbl">${esc(t().stat.salesRecorded)}</div><div class="val">${db.sales.length}</div></div>
-    <div class="stat-card"><div class="lbl">${esc(t().stat.purchasesLogged)}</div><div class="val">${db.purchases.length}</div></div>
+    ${admin ? `<div class="stat-card"><div class="lbl">${esc(t().stat.purchasesLogged)}</div><div class="val">${db.purchases.length}</div></div>` : ""}
   </div>
   ${s.lowStock.length ? `<div class="low-box" style="margin-bottom:16px;">
     <div class="low-title">&#9888; ${esc(t().lowStockTitle)}</div>
@@ -251,7 +301,7 @@ function renderDashboard(){
     </div></div>` : ""}
   <div class="card">
     <div class="card-title">${esc(t().recentSales)}</div>
-    ${recent.length ? `<table><thead><tr><th>${esc(t().col.date)}</th><th>${esc(t().col.items)}</th><th>${esc(t().col.total)}</th><th>${esc(t().col.profit)}</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : rows}
+    ${recent.length ? `<table><thead><tr><th>${esc(t().col.date)}</th><th>${esc(t().col.client)}</th><th>${esc(t().col.items)}</th><th>${esc(t().col.total)}</th>${admin ? `<th>${esc(t().col.profit)}</th>` : ""}<th></th></tr></thead><tbody>${rows}</tbody></table>` : rows}
   </div>`;
 }
 
@@ -260,23 +310,28 @@ function renderInventory(){
   const filtered = db.items.filter(i => (i.name+" "+(i.model||"")).toLowerCase().includes(query.toLowerCase()));
   const editing = window.__editingId;
   const f = window.__invForm || {name:"",model:"",cost:"",price:"",qty:""};
+  const admin = isAdmin();
   const rows = filtered.length ? filtered.map(i=>`
     <tr>
       <td>${esc(i.name)}</td>
       <td style="color:var(--muted);">${esc(i.model)||"—"}</td>
-      <td>${money(i.cost)}</td>
+      ${admin ? `<td>
+        <span class="th-with-eye">
+          ${costVisibleIds.has(i.id) ? money(i.cost) : '<span class="cost-hidden">••••</span>'}
+          <button type="button" class="eye-btn" onclick="toggleCostVisible(${i.id})">${costVisibleIds.has(i.id) ? '&#128065;' : '&#128064;'}</button>
+        </span>
+      </td>` : ""}
       <td>${money(i.price)}</td>
       <td style="color:${i.qty<=LOW_STOCK?'var(--danger)':'var(--ink)'};font-weight:${i.qty<=LOW_STOCK?700:400};">${i.qty}</td>
-      <td>
+      ${admin ? `<td>
         <div style="display:flex;gap:6px;">
           <button class="btn-sm ghost" onclick="editItem(${i.id})">${esc(t().inv.edit)}</button>
           <button class="btn-sm" style="background:#FBE9E5;color:var(--danger);" onclick="deleteItem(${i.id})">&#128465;</button>
         </div>
-      </td>
+      </td>` : ""}
     </tr>`).join("") : `<div class="empty">${esc(t().inv.empty)}</div>`;
 
-  return `
-  <div class="inv-col">
+  const formHtml = admin ? `
     <form class="card" id="itemForm" style="padding:16px;">
       <div style="display:flex;justify-content:space-between;align-items:center;font-weight:700;margin-bottom:10px;">
         <span>${editing ? esc(t().inv.editTitle) : esc(t().inv.addTitle)}</span>
@@ -292,19 +347,32 @@ function renderInventory(){
         <input id="f_qty" type="number" placeholder="${esc(t().inv.qtyPh)}" value="${esc(f.qty)}">
       </div>
       <button class="btn" type="submit">+ ${editing ? esc(t().inv.save) : esc(t().inv.add)}</button>
-    </form>
+    </form>` : "";
+
+  return `
+  <div class="inv-col">
+    ${formHtml}
     <div class="card">
       <div class="search-box">
         &#128269; <input id="invSearch" placeholder="${esc(t().inv.search)}" value="${esc(query)}">
       </div>
-      ${filtered.length ? `<div style="overflow-x:auto;"><table><thead><tr><th>${esc(t().col.name)}</th><th>${esc(t().col.model)}</th><th>${esc(t().col.cost)}</th><th>${esc(t().col.price)}</th><th>${esc(t().col.qty)}</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : rows}
+      ${filtered.length ? `<div style="overflow-x:auto;"><table><thead><tr><th>${esc(t().col.name)}</th><th>${esc(t().col.model)}</th>
+        ${admin ? `<th>${esc(t().col.cost)}</th>` : ""}
+        <th>${esc(t().col.price)}</th><th>${esc(t().col.qty)}</th>${admin ? "<th></th>" : ""}</tr></thead><tbody>${rows}</tbody></table></div>` : rows}
     </div>
   </div>`;
 }
 
+function toggleCostVisible(id){
+  if (costVisibleIds.has(id)) costVisibleIds.delete(id); else costVisibleIds.add(id);
+  render();
+}
+
 function bindInventory(){
   document.getElementById("invSearch").oninput = e => { window.__invQuery = e.target.value; render(); };
-  document.getElementById("itemForm").onsubmit = async e => {
+  const form = document.getElementById("itemForm");
+  if (!form) return;
+  form.onsubmit = async e => {
     e.preventDefault();
     const name = document.getElementById("f_name").value.trim();
     const model = document.getElementById("f_model").value.trim();
@@ -340,8 +408,8 @@ async function deleteItem(id){
 
 function renderSell(){
   const query = window.__sellQuery || "";
-  const results = query ? db.items.filter(i=>(i.name+" "+(i.model||"")).toLowerCase().includes(query.toLowerCase())) : [];
-  const resultsHtml = results.length ? `<div class="card" style="margin-top:8px;">${results.map(i=>`
+  const results = query ? db.items.filter(i=>(i.name+" "+(i.model||"")).toLowerCase().includes(query.toLowerCase())) : db.items;
+  const resultsHtml = results.length ? `<div class="card" style="margin-top:8px;max-height:340px;overflow-y:auto;">${results.map(i=>`
     <button class="result-row" onclick="addToCart(${i.id})">
       <span>${esc(i.name)} <span style="color:var(--muted);">${esc(i.model)}</span></span>
       <span style="color:${i.qty<=LOW_STOCK?'var(--danger)':'var(--green-dark)'};">${i.qty} ${esc(t().sale.inStock)} · ${money(i.price)} IQD</span>
@@ -359,10 +427,14 @@ function renderSell(){
   const total = cart.reduce((s,l)=>s+Number(l.price||0)*Number(l.qty||0),0);
   const profit = cart.reduce((s,l)=>s+(Number(l.price||0)-Number(l.cost||0))*Number(l.qty||0),0);
 
+  const clientOptions = `<option value="">${esc(t().sale.noClient)}</option>` +
+    db.clients.map(c=>`<option value="${c.id}" ${String(c.id)===String(selectedClientId)?'selected':''}>${esc(c.name)}${c.phone ? ' — '+esc(c.phone) : ''}</option>`).join("");
+
   return `
   <div class="two-col">
     <div>
       <div class="card" style="padding:12px;">
+        <select id="sellClient" style="margin-bottom:10px;">${clientOptions}</select>
         <div class="search-box" style="padding:0;">&#128269; <input id="sellSearch" placeholder="${esc(t().sale.search)}" value="${esc(query)}"></div>
         ${resultsHtml}
       </div>
@@ -372,7 +444,7 @@ function renderSell(){
     </div>
     <div style="display:flex;flex-direction:column;gap:12px;">
       ${odometer(total, t().sale.total)}
-      ${odometer(profit, t().sale.profit)}
+      ${isAdmin() ? odometer(profit, t().sale.profit) : ""}
       <button class="btn" onclick="checkout()">&#128722; ${esc(t().sale.complete)}</button>
       ${db.sales.length ? `<button class="btn ghost" onclick="printSale(${db.sales[db.sales.length-1].id})">&#128438; ${esc(t().receipt.print)}</button>` : ""}
     </div>
@@ -381,6 +453,7 @@ function renderSell(){
 
 function bindSell(){
   document.getElementById("sellSearch").oninput = e => { window.__sellQuery = e.target.value; render(); };
+  document.getElementById("sellClient").onchange = e => { selectedClientId = e.target.value; };
 }
 
 function addToCart(itemId){
@@ -401,16 +474,17 @@ async function checkout(){
     if (Number(l.qty) > l.maxQty){ showToast(t().sale.onlyLeft(l.maxQty, l.name), "danger"); return; }
     if (Number(l.qty) <= 0){ showToast(t().sale.qtyMore, "danger"); return; }
   }
-  const payload = { lines: cart.map(l=>({itemId:l.itemId, qty:l.qty, price:l.price})) };
+  const payload = { lines: cart.map(l=>({itemId:l.itemId, qty:l.qty, price:l.price})), clientId: selectedClientId || null };
   const res = await fetch("/api/sales", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
   const data = await res.json();
   if (data.error){ showToast(data.error, "danger"); return; }
-  showToast(t().sale.recorded(data.profit));
+  showToast(isAdmin() ? t().sale.recorded(data.profit) : t().sale.recordedPlain);
   cart = [];
+  selectedClientId = "";
   await loadState(); render();
 }
 
-function printSale(id){ window.open(`/receipt/${id}?lang=${lang}`, "_blank"); }
+function printSale(id){ window.open(`/receipt/${id}`, "_blank"); }
 
 function renderBuy(){
   const mode = window.__buyMode || "existing";
@@ -473,8 +547,225 @@ function bindBuy(){
   };
 }
 
+function renderClients(){
+  if (viewingClientId){
+    const client = db.clients.find(c=>c.id===viewingClientId);
+    if (!client){ viewingClientId = null; return renderClients(); }
+    const history = db.sales.filter(s=>s.clientId===viewingClientId).slice().reverse();
+    const rows = history.length ? history.map(sale=>{
+      const items = sale.lines.map(l=>`${esc(l.name)} ×${l.qty}`).join(", ");
+      return `<tr><td>${fmtDate(sale.date)}</td><td>${items}</td><td>${money(sale.total)}</td>
+        <td><button class="btn-sm ghost" onclick="printSale(${sale.id})">&#128438;</button></td></tr>`;
+    }).join("") : `<div class="empty">${esc(t().clients.noHistory)}</div>`;
+    return `
+    <button class="btn ghost" style="width:auto;margin-bottom:12px;" onclick="viewingClientId=null; render();">&#8592; ${esc(t().clients.back)}</button>
+    <div class="card" style="padding:16px;margin-bottom:16px;">
+      <div style="font-weight:700;font-size:16px;">${esc(client.name)}</div>
+      <div style="color:var(--muted);font-size:13px;">${esc(client.phone)||'—'}</div>
+    </div>
+    <div class="card">
+      <div class="card-title">${esc(t().clients.history)}</div>
+      ${history.length ? `<table><thead><tr><th>${esc(t().col.date)}</th><th>${esc(t().col.items)}</th><th>${esc(t().col.total)}</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : rows}
+    </div>`;
+  }
+
+  const query = window.__clientQuery || "";
+  const filtered = db.clients.filter(c=>(c.name+" "+(c.phone||"")).toLowerCase().includes(query.toLowerCase()));
+  const editing = window.__editingClientId;
+  const f = window.__clientForm || {name:"", phone:""};
+
+  const rows = filtered.length ? filtered.map(c=>`
+    <div class="client-row">
+      <span onclick="viewClient(${c.id})" style="flex:1;cursor:pointer;">${esc(c.name)} <span style="color:var(--muted);">${esc(c.phone)||''}</span></span>
+      ${isAdmin() ? `<div style="display:flex;gap:6px;">
+        <button class="btn-sm ghost" onclick="editClient(${c.id})">${esc(t().clients.edit)}</button>
+        <button class="btn-sm" style="background:#FBE9E5;color:var(--danger);" onclick="deleteClient(${c.id})">&#128465;</button>
+      </div>` : ""}
+    </div>`).join("") : `<div class="empty">${esc(t().clients.empty)}</div>`;
+
+  return `
+  <div class="inv-col">
+    <form class="card" id="clientForm" style="padding:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-weight:700;margin-bottom:10px;">
+        <span>${editing ? esc(t().clients.edit) : esc(t().clients.addTitle)}</span>
+        ${editing ? `<button type="button" onclick="cancelClientEdit()" style="background:none;border:none;cursor:pointer;color:var(--muted);">&#10005;</button>` : ""}
+      </div>
+      <div class="form-row">
+        <input id="c_name" placeholder="${esc(t().clients.namePh)}" value="${esc(f.name)}">
+        <input id="c_phone" placeholder="${esc(t().clients.phonePh)}" value="${esc(f.phone)}">
+      </div>
+      <button class="btn" type="submit">+ ${editing ? esc(t().inv.save) : esc(t().clients.add)}</button>
+    </form>
+    <div class="card">
+      <div class="search-box">
+        &#128269; <input id="clientSearch" placeholder="${esc(t().clients.search)}" value="${esc(query)}">
+      </div>
+      ${rows}
+    </div>
+  </div>`;
+}
+
+function viewClient(id){ viewingClientId = id; render(); }
+
+function bindClients(){
+  const searchEl = document.getElementById("clientSearch");
+  if (searchEl) searchEl.oninput = e => { window.__clientQuery = e.target.value; render(); };
+  const formEl = document.getElementById("clientForm");
+  if (!formEl) return;
+  formEl.onsubmit = async e => {
+    e.preventDefault();
+    const name = document.getElementById("c_name").value.trim();
+    const phone = document.getElementById("c_phone").value.trim();
+    if (!name){ showToast(t().clients.fillName, "danger"); return; }
+    if (window.__editingClientId){
+      await fetch(`/api/clients/${window.__editingClientId}`, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({name, phone})});
+      showToast(t().clients.updated);
+    } else {
+      await fetch("/api/clients", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({name, phone})});
+      showToast(t().clients.added);
+    }
+    window.__editingClientId = null; window.__clientForm = null;
+    await loadState(); render();
+  };
+}
+
+function editClient(id){
+  const c = db.clients.find(x=>x.id===id);
+  window.__editingClientId = id;
+  window.__clientForm = {name:c.name, phone:c.phone||""};
+  render();
+}
+function cancelClientEdit(){ window.__editingClientId = null; window.__clientForm = null; render(); }
+async function deleteClient(id){
+  await fetch(`/api/clients/${id}`, {method:"DELETE"});
+  showToast(t().clients.removed);
+  await loadState(); render();
+}
+
+function renderExpenses(){
+  const totalExpenses = db.expenses.reduce((s,e)=>s+e.amount,0);
+  const rows = db.expenses.length ? [...db.expenses].reverse().map(e=>`
+    <tr>
+      <td>${fmtDate(e.date)}</td>
+      <td>${esc(e.description)}</td>
+      <td>${money(e.amount)}</td>
+      <td><button class="btn-sm" style="background:#FBE9E5;color:var(--danger);" onclick="deleteExpense(${e.id})">&#128465;</button></td>
+    </tr>`).join("") : `<div class="empty">${esc(t().expenses.empty)}</div>`;
+
+  return `
+  <div class="inv-col">
+    <form class="card" id="expenseForm" style="padding:16px;">
+      <div style="font-weight:700;margin-bottom:10px;">${esc(t().expenses.addTitle)}</div>
+      <div class="form-row">
+        <input id="e_desc" placeholder="${esc(t().expenses.descPh)}">
+        <input id="e_amount" type="number" placeholder="${esc(t().expenses.amountPh)}">
+      </div>
+      <button class="btn" type="submit">+ ${esc(t().expenses.add)}</button>
+    </form>
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>${esc(t().expenses.list)}</span>
+        <span style="color:var(--danger);font-weight:700;">${money(totalExpenses)} IQD</span>
+      </div>
+      ${db.expenses.length ? `<table><thead><tr><th>${esc(t().col.date)}</th><th>${esc(t().expenses.desc)}</th><th>${esc(t().expenses.amount)}</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : rows}
+    </div>
+  </div>`;
+}
+
+function bindExpenses(){
+  document.getElementById("expenseForm").onsubmit = async e => {
+    e.preventDefault();
+    const description = document.getElementById("e_desc").value.trim();
+    const amount = document.getElementById("e_amount").value;
+    if (!description || !amount || Number(amount) <= 0){ showToast(t().expenses.fillAll, "danger"); return; }
+    const res = await fetch("/api/expenses", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({description, amount})});
+    const data = await res.json();
+    if (data.error){ showToast(data.error, "danger"); return; }
+    showToast(t().expenses.added);
+    await loadState(); render();
+  };
+}
+
+async function deleteExpense(id){
+  await fetch(`/api/expenses/${id}`, {method:"DELETE"});
+  showToast(t().expenses.removed);
+  await loadState(); render();
+}
+
+async function loadUsers(){
+  const res = await fetch("/api/users");
+  if (res.ok) db.users = await res.json();
+}
+
+function renderUsers(){
+  if (!isAdmin()){
+    return `<div class="empty">${esc(t().noPermission)}</div>`;
+  }
+  const rows = db.users.length ? db.users.map(u=>`
+    <div class="client-row">
+      <span style="flex:1;">${esc(u.username)} <span class="role-tag ${u.role}" style="margin-inline-start:8px;">${esc(t().role[u.role] || u.role)}</span></span>
+      <div style="display:flex;gap:6px;">
+        <button class="btn-sm ghost" onclick="resetUserPassword(${u.id})">${esc(t().users.resetPassword)}</button>
+        <button class="btn-sm" style="background:#FBE9E5;color:var(--danger);" onclick="deleteUser(${u.id})">&#128465;</button>
+      </div>
+    </div>`).join("") : `<div class="empty">${esc(t().users.empty)}</div>`;
+
+  return `
+  <div class="inv-col">
+    <form class="card" id="userForm" style="padding:16px;">
+      <div style="font-weight:700;margin-bottom:10px;">${esc(t().users.addTitle)}</div>
+      <div class="form-row">
+        <input id="u_username" placeholder="${esc(t().users.usernamePh)}">
+        <input id="u_password" type="password" placeholder="${esc(t().users.passwordPh)}">
+        <select id="u_role">
+          <option value="cashier">${esc(t().users.roleCashier)}</option>
+          <option value="admin">${esc(t().users.roleAdmin)}</option>
+        </select>
+      </div>
+      <button class="btn" type="submit">+ ${esc(t().users.add)}</button>
+    </form>
+    <div class="card">
+      ${rows}
+    </div>
+  </div>`;
+}
+
+function bindUsers(){
+  const form = document.getElementById("userForm");
+  if (!form) return;
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const username = document.getElementById("u_username").value.trim();
+    const password = document.getElementById("u_password").value;
+    const role = document.getElementById("u_role").value;
+    if (!username || password.length < 4){ showToast(t().users.fillAll, "danger"); return; }
+    const res = await fetch("/api/users", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({username, password, role})});
+    const data = await res.json();
+    if (data.error){ showToast(data.error, "danger"); return; }
+    showToast(t().users.added);
+    await loadUsers(); render();
+  };
+}
+
+async function deleteUser(id){
+  const res = await fetch(`/api/users/${id}`, {method:"DELETE"});
+  const data = await res.json();
+  if (data.error){ showToast(data.error, "danger"); return; }
+  showToast(t().users.removed);
+  await loadUsers(); render();
+}
+
+async function resetUserPassword(id){
+  const pwd = prompt(t().users.newPasswordPrompt);
+  if (!pwd) return;
+  if (pwd.length < 4){ showToast(t().users.fillAll, "danger"); return; }
+  const res = await fetch(`/api/users/${id}/password`, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({password:pwd})});
+  const data = await res.json();
+  if (data.error){ showToast(data.error, "danger"); return; }
+  showToast(t().users.passwordUpdated);
+}
+
 (async function init(){
-  document.documentElement.dir = t().dir;
   document.getElementById("content").innerHTML = `<div class="empty">${esc(t().loading)}</div>`;
   await loadState();
   render();

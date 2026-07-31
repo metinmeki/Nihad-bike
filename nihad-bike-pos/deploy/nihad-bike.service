@@ -1,0 +1,13 @@
+[Unit]
+Description=Nihad Bike POS (gunicorn)
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/var/www/nihad-bike
+Environment="PATH=/var/www/nihad-bike/venv/bin"
+ExecStart=/var/www/nihad-bike/venv/bin/gunicorn --workers 2 --bind 127.0.0.1:5010 app:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
