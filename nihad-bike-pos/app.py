@@ -75,6 +75,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             phone TEXT,
+            address TEXT,
             created_at TEXT NOT NULL
         );
 
@@ -85,6 +86,7 @@ def init_db():
             profit REAL NOT NULL,
             client_id INTEGER,
             client_name TEXT,
+            client_phone TEXT,
             FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE SET NULL
         );
 
@@ -124,6 +126,12 @@ def init_db():
             note TEXT,
             FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE
         );
+
+        CREATE TABLE IF NOT EXISTS shop_settings (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            address TEXT NOT NULL DEFAULT '',
+            phone TEXT NOT NULL DEFAULT ''
+        );
         """
     )
     db.commit()
@@ -137,6 +145,12 @@ def init_db():
         db.execute("ALTER TABLE sales ADD COLUMN paid REAL")
         # Historical sales predate debt tracking - treat them as fully settled.
         db.execute("UPDATE sales SET paid = total WHERE paid IS NULL")
+    if not column_exists(db, "clients", "address"):
+        db.execute("ALTER TABLE clients ADD COLUMN address TEXT")
+    if not column_exists(db, "sales", "address"):
+        db.execute("ALTER TABLE sales ADD COLUMN address TEXT")
+    if not column_exists(db, "sales", "client_phone"):
+        db.execute("ALTER TABLE sales ADD COLUMN client_phone TEXT")
     db.commit()
 
     # First run: create a default admin account so there is always a way in.
@@ -155,6 +169,8 @@ def init_db():
         print(f"  Password: {first_password}")
         print("=" * 50)
 
+    db.execute("INSERT OR IGNORE INTO shop_settings (id, address, phone) VALUES (1, '', '')")
+    db.commit()
     db.close()
 
 
@@ -169,8 +185,10 @@ def row_to_sale(r, lines):
         "total": r["total"],
         "profit": r["profit"],
         "paid": r["paid"] if r["paid"] is not None else r["total"],
+        "address": r["address"] or "",
         "clientId": r["client_id"],
         "clientName": r["client_name"] or "",
+        "clientPhone": r["client_phone"] or "",
         "lines": [
             {"itemId": l["item_id"], "name": l["name"], "model": l["model"] or "", "qty": l["qty"], "price": l["price"], "cost": l["cost"]}
             for l in lines
@@ -251,9 +269,11 @@ def api_state():
     clients = [dict(r) for r in db.execute("SELECT * FROM clients ORDER BY name")]
     expenses = [] if not is_admin else [dict(r) for r in db.execute("SELECT * FROM expenses ORDER BY id")]
     debt_payments = [dict(r) for r in db.execute("SELECT * FROM debt_payments ORDER BY id")]
+    settings_row = db.execute("SELECT * FROM shop_settings WHERE id=1").fetchone()
+    settings = {"address": settings_row["address"], "phone": settings_row["phone"]} if settings_row else {"address": "", "phone": ""}
     return jsonify({
         "items": items, "sales": sales, "purchases": purchases, "clients": clients, "expenses": expenses,
-        "debtPayments": debt_payments,
+        "debtPayments": debt_payments, "settings": settings,
         "currentUser": {"username": session["username"], "role": session["role"]},
     })
 
@@ -349,15 +369,16 @@ def add_client():
     data = request.get_json(force=True)
     name = (data.get("name") or "").strip()
     phone = (data.get("phone") or "").strip()
+    address = (data.get("address") or "").strip()
     if not name:
         return jsonify({"error": "name required"}), 400
     db = get_db()
     cur = db.execute(
-        "INSERT INTO clients (name, phone, created_at) VALUES (?, ?, ?)",
-        (name, phone, datetime.now().isoformat()),
+        "INSERT INTO clients (name, phone, address, created_at) VALUES (?, ?, ?, ?)",
+        (name, phone, address, datetime.now().isoformat()),
     )
     db.commit()
-    return jsonify({"id": cur.lastrowid, "name": name, "phone": phone})
+    return jsonify({"id": cur.lastrowid, "name": name, "phone": phone, "address": address})
 
 
 @app.route("/api/clients/<int:client_id>", methods=["PUT"])
@@ -367,10 +388,11 @@ def update_client(client_id):
     data = request.get_json(force=True)
     name = (data.get("name") or "").strip()
     phone = (data.get("phone") or "").strip()
+    address = (data.get("address") or "").strip()
     if not name:
         return jsonify({"error": "name required"}), 400
     db = get_db()
-    db.execute("UPDATE clients SET name=?, phone=? WHERE id=?", (name, phone, client_id))
+    db.execute("UPDATE clients SET name=?, phone=?, address=? WHERE id=?", (name, phone, address, client_id))
     db.execute("UPDATE sales SET client_name=? WHERE client_id=?", (name, client_id))
     db.commit()
     return jsonify({"ok": True})
@@ -451,6 +473,19 @@ def delete_debt_payment(payment_id):
     return jsonify({"ok": True})
 
 
+@app.route("/api/settings", methods=["PUT"])
+@login_required
+@admin_required
+def update_settings():
+    data = request.get_json(force=True)
+    address = (data.get("address") or "").strip()
+    phone = (data.get("phone") or "").strip()
+    db = get_db()
+    db.execute("UPDATE shop_settings SET address=?, phone=? WHERE id=1", (address, phone))
+    db.commit()
+    return jsonify({"address": address, "phone": phone})
+
+
 @app.route("/api/sales", methods=["POST"])
 @login_required
 def add_sale():
@@ -462,10 +497,17 @@ def add_sale():
     db = get_db()
     client_id = data.get("clientId") or None
     client_name = ""
+    client_phone = ""
+    client_address = ""
     if client_id:
         client = db.execute("SELECT * FROM clients WHERE id=?", (client_id,)).fetchone()
         if client is not None:
             client_name = client["name"]
+            client_phone = client["phone"] or ""
+            client_address = client["address"] or ""
+
+    address_override = data.get("address")
+    address = address_override.strip() if isinstance(address_override, str) and address_override.strip() else client_address
 
     total = 0.0
     profit = 0.0
@@ -498,8 +540,8 @@ def add_sale():
         return jsonify({"error": "a client must be selected to record a debt (partial payment)"}), 400
 
     cur = db.execute(
-        "INSERT INTO sales (date, total, profit, client_id, client_name, paid) VALUES (?, ?, ?, ?, ?, ?)",
-        (now, total, profit, client_id, client_name, paid),
+        "INSERT INTO sales (date, total, profit, client_id, client_name, client_phone, paid, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (now, total, profit, client_id, client_name, client_phone, paid, address),
     )
     sale_id = cur.lastrowid
 
@@ -594,7 +636,9 @@ def receipt(sale_id):
         return "Sale not found", 404
     lines = db.execute("SELECT * FROM sale_lines WHERE sale_id=?", (sale_id,)).fetchall()
     sale_dict = row_to_sale(sale, lines)
-    return render_template("receipt.html", sale=sale_dict)
+    settings_row = db.execute("SELECT * FROM shop_settings WHERE id=1").fetchone()
+    shop = {"address": settings_row["address"], "phone": settings_row["phone"]} if settings_row else {"address": "", "phone": ""}
+    return render_template("receipt.html", sale=sale_dict, shop=shop)
 
 
 init_db()

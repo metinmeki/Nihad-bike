@@ -31,15 +31,22 @@
   <div class="head">
     <div class="head-brand">
       <img src="/static/logo.png" alt="NIHAD BIKE">
-      <div><div class="brand">NIHAD BIKE</div><div class="sub">سجل المخزون والمبيعات</div></div>
+      <div><div class="brand">NIHAD BIKE</div>
+        {% if shop.address or shop.phone %}
+        <div class="sub">{% if shop.address %}{{ shop.address }}{% endif %}{% if shop.address and shop.phone %} &nbsp;|&nbsp; {% endif %}{% if shop.phone %}{{ shop.phone }}{% endif %}</div>
+        {% endif %}
+      </div>
     </div>
     <div class="meta">
+      <img src="/static/logo.png" alt="" style="height:36px;margin-bottom:6px;">
       <div>رقم الفاتورة: {{ '%06d' % sale.id }}</div>
       <div>التاريخ: {{ sale.date }}</div>
     </div>
   </div>
   <div class="title">فاتورة بيع</div>
   {% if sale.clientName %}<div class="client-line">العميل: {{ sale.clientName }}</div>{% endif %}
+  {% if sale.address %}<div class="client-line">العنوان: {{ sale.address }}</div>{% endif %}
+  {% if sale.clientPhone %}<div class="client-line">هاتف: {{ sale.clientPhone }}</div>{% endif %}
   <table>
     <thead><tr><th>ت</th><th>اسم المادة</th><th>الموديل</th><th>العدد</th><th>السعر</th><th>المجموع</th></tr></thead>
     <tbody>

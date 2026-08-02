@@ -109,7 +109,7 @@
 <script>
 const CURRENT_USER = {{ user | tojson }};
 const AR = {
-  tabs:{dashboard:"لوحة التحكم",inventory:"المخزون",sell:"بيع جديد",buy:"شراء جديد",clients:"العملاء",expenses:"المصاريف",users:"المستخدمين",debts:"الديون"},
+  tabs:{dashboard:"لوحة التحكم",inventory:"المخزون",sell:"بيع جديد",buy:"شراء جديد",clients:"العملاء",expenses:"المصاريف",users:"المستخدمين",debts:"الديون",settings:"الإعدادات"},
   lowStockBadge:n=>`${n} مواد منخفضة`,
   stat:{revenue:"إجمالي المبيعات",cost:"إجمالي الكلفة",profit:"صافي الربح",stockValue:"قيمة المخزون",
     itemsTracked:"عدد المواد",salesRecorded:"عدد المبيعات",purchasesLogged:"عدد المشتريات"},
@@ -125,7 +125,7 @@ const AR = {
     outOfStock:n=>`${n} غير متوفرة حالياً`,pickOne:"أضف مادة واحدة على الأقل",onlyLeft:(max,n)=>`يوجد فقط ${max} من ${n}`,
     qtyMore:"يجب أن تكون الكمية أكثر من صفر",recorded:p=>`تم تسجيل البيع — الربح ${money(p)}`,recordedPlain:"تم تسجيل البيع بنجاح",
     noClient:"بدون عميل (زبون عابر)",paidPh:"المبلغ المدفوع",debtNeedsClient:"يجب اختيار عميل لتسجيل الدين",
-    remainingDebt:n=>`سيبقى ديناً: ${money(n)}`},
+    remainingDebt:n=>`سيبقى ديناً: ${money(n)}`,addressPh:"العنوان (اختياري، يظهر على الفاتورة)"},
   debts:{recordPayment:"تسجيل دفعة",amountPh:"المبلغ المدفوع",pay:"تسجيل الدفعة",empty:"لا توجد ديون مستحقة حالياً.",
     owes:"مدين بـ",totalDebts:"إجمالي الديون المستحقة",paymentRecorded:"تم تسجيل الدفعة",
     needAmount:"أدخل مبلغاً صحيحاً",history:"سجل الدفعات",noPayments:"لا توجد دفعات مسجلة بعد."},
@@ -133,7 +133,7 @@ const AR = {
     costUnitPh:"سعر الشراء للقطعة",record:"تسجيل الشراء",needNamePrice:"أدخل الاسم وسعر البيع للمادة الجديدة",
     needQtyCost:"أدخل الكمية وسعر الشراء",needPick:"اختر مادة",restocked:(n,name)=>`تمت إضافة ${n} إلى ${name}`,
     stocked:name=>`تم تسجيل مادة جديدة: ${name}`},
-  clients:{addTitle:"إضافة عميل جديد",namePh:"اسم العميل",phonePh:"رقم الهاتف",add:"إضافة العميل",
+  clients:{addTitle:"إضافة عميل جديد",namePh:"اسم العميل",phonePh:"رقم الهاتف",addressPh:"العنوان",add:"إضافة العميل",
     empty:"لا يوجد عملاء بعد.",search:"بحث عن عميل...",history:"سجل المشتريات",back:"رجوع",
     added:"تمت إضافة العميل",updated:"تم تعديل العميل",removed:"تم حذف العميل",edit:"تعديل",
     fillName:"أدخل اسم العميل",noHistory:"لا توجد مشتريات مسجلة لهذا العميل بعد."},
@@ -146,6 +146,7 @@ const AR = {
     added:"تمت إضافة المستخدم",removed:"تم حذف المستخدم",fillAll:"أدخل اسم المستخدم وكلمة مرور 4 أحرف على الأقل",
     resetPassword:"تغيير كلمة المرور",newPasswordPrompt:"كلمة المرور الجديدة:",passwordUpdated:"تم تغيير كلمة المرور",
     cannotDeleteSelf:"لا يمكنك حذف حسابك الحالي",lastAdmin:"لا يمكن حذف آخر مدير"},
+  settings:{title:"إعدادات المحل",addressPh:"عنوان المحل",phonePh:"رقم الهاتف",save:"حفظ الإعدادات",saved:"تم حفظ الإعدادات"},
   role:{admin:"مدير",cashier:"كاشير"}, logout:"تسجيل الخروج",
   noPermission:"هذا القسم متاح للمدير فقط.",
   receipt:{print:"طباعة الفاتورة"},
@@ -153,7 +154,7 @@ const AR = {
 };
 
 let tab = "dashboard";
-let db = {items:[],sales:[],purchases:[],clients:[],expenses:[],users:[],debtPayments:[]};
+let db = {items:[],sales:[],purchases:[],clients:[],expenses:[],users:[],debtPayments:[],settings:{address:"",phone:""}};
 let cart = [];
 let costVisibleIds = new Set();
 let selectedClientId = "";
@@ -172,7 +173,7 @@ function totalDebts(){
   return db.clients.reduce((s,c)=>s+clientDebt(c.id),0);
 }
 function t(){ return AR; }
-function esc(s){ const d=document.createElement("div"); d.innerText = s==null?"":s; return d.innerHTML; }
+function esc(s){ const d=document.createElement("div"); d.textContent = s==null?"":s; return d.innerHTML; }
 function fmtDate(iso){
   const d = new Date(iso);
   return d.toLocaleDateString('en-GB') + " " + d.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
@@ -225,6 +226,7 @@ function renderTabs(){
     {id:"debts", label: t().tabs.debts, icon:"&#128179;"},
     {id:"expenses", label: t().tabs.expenses, icon:"&#128220;", adminOnly:true},
     {id:"users", label: t().tabs.users, icon:"&#128100;", adminOnly:true},
+    {id:"settings", label: t().tabs.settings, icon:"&#9881;", adminOnly:true},
   ];
   if (!isAdmin()) tabs = tabs.filter(tb=>!tb.adminOnly);
   const current = tabs.find(x=>x.id===tab) || tabs[0];
@@ -255,8 +257,15 @@ function selectTab(id){
 }
 
 function render(){
-  const adminOnlyTabs = ["buy","expenses","users"];
+  const adminOnlyTabs = ["buy","expenses","users","settings"];
   if (!isAdmin() && adminOnlyTabs.includes(tab)) tab = "dashboard";
+
+  const active = document.activeElement;
+  const activeId = active && active.id;
+  const canHaveSelection = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA");
+  const selStart = canHaveSelection ? active.selectionStart : null;
+  const selEnd = canHaveSelection ? active.selectionEnd : null;
+
   renderHeader();
   renderTabs();
   const c = document.getElementById("content");
@@ -268,6 +277,7 @@ function render(){
   if (tab==="debts") c.innerHTML = renderDebts();
   if (tab==="expenses") c.innerHTML = renderExpenses();
   if (tab==="users") c.innerHTML = renderUsers();
+  if (tab==="settings") c.innerHTML = renderSettings();
   if (tab==="inventory") bindInventory();
   if (tab==="sell") bindSell();
   if (tab==="buy") bindBuy();
@@ -275,6 +285,17 @@ function render(){
   if (tab==="debts") bindDebts();
   if (tab==="expenses") bindExpenses();
   if (tab==="users") bindUsers();
+  if (tab==="settings") bindSettings();
+
+  if (activeId){
+    const el = document.getElementById(activeId);
+    if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")){
+      el.focus();
+      if (selStart !== null && selStart !== undefined && el.setSelectionRange){
+        try { el.setSelectionRange(selStart, selEnd); } catch(e){}
+      }
+    }
+  }
 }
 
 function odometer(value,label,tone){
@@ -445,6 +466,9 @@ function renderSell(){
   if (!window.__paidManuallySet) window.__paidAmount = total;
   const paidAmount = Number(window.__paidAmount) || 0;
   const remaining = Math.max(0, total - paidAmount);
+  const selectedClient = db.clients.find(c=>String(c.id)===String(selectedClientId));
+  if (!window.__addressManuallySet) window.__saleAddress = selectedClient ? (selectedClient.address || "") : "";
+  const saleAddress = window.__saleAddress || "";
 
   const clientOptions = `<option value="">${esc(t().sale.noClient)}</option>` +
     db.clients.map(c=>`<option value="${c.id}" ${String(c.id)===String(selectedClientId)?'selected':''}>${esc(c.name)}${c.phone ? ' — '+esc(c.phone) : ''}</option>`).join("");
@@ -454,6 +478,7 @@ function renderSell(){
     <div>
       <div class="card" style="padding:12px;">
         <select id="sellClient" style="margin-bottom:10px;">${clientOptions}</select>
+        <input id="sellAddress" placeholder="${esc(t().sale.addressPh)}" value="${esc(saleAddress)}" style="margin-bottom:10px;">
         <div class="search-box" style="padding:0;">&#128269; <input id="sellSearch" placeholder="${esc(t().sale.search)}" value="${esc(query)}"></div>
         ${resultsHtml}
       </div>
@@ -477,7 +502,12 @@ function renderSell(){
 
 function bindSell(){
   document.getElementById("sellSearch").oninput = e => { window.__sellQuery = e.target.value; render(); };
-  document.getElementById("sellClient").onchange = e => { selectedClientId = e.target.value; render(); };
+  document.getElementById("sellClient").onchange = e => {
+    selectedClientId = e.target.value;
+    window.__addressManuallySet = false;
+    render();
+  };
+  document.getElementById("sellAddress").onchange = e => { window.__saleAddress = e.target.value; window.__addressManuallySet = true; };
   document.getElementById("sellPaid").onchange = e => { window.__paidAmount = e.target.value; window.__paidManuallySet = true; render(); };
 }
 
@@ -502,7 +532,7 @@ async function checkout(){
   const total = cart.reduce((s,l)=>s+Number(l.price||0)*Number(l.qty||0),0);
   const paid = window.__paidManuallySet ? Number(window.__paidAmount) || 0 : total;
   if (paid < total && !selectedClientId){ showToast(t().sale.debtNeedsClient, "danger"); return; }
-  const payload = { lines: cart.map(l=>({itemId:l.itemId, qty:l.qty, price:l.price})), clientId: selectedClientId || null, paid };
+  const payload = { lines: cart.map(l=>({itemId:l.itemId, qty:l.qty, price:l.price})), clientId: selectedClientId || null, paid, address: window.__saleAddress || "" };
   const res = await fetch("/api/sales", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
   const data = await res.json();
   if (data.error){ showToast(data.error, "danger"); return; }
@@ -511,6 +541,8 @@ async function checkout(){
   selectedClientId = "";
   window.__paidAmount = null;
   window.__paidManuallySet = false;
+  window.__saleAddress = "";
+  window.__addressManuallySet = false;
   await loadState(); render();
 }
 
@@ -594,7 +626,7 @@ function renderClients(){
     <button class="btn ghost" style="width:auto;margin-bottom:12px;" onclick="viewingClientId=null; render();">&#8592; ${esc(t().clients.back)}</button>
     <div class="card" style="padding:16px;margin-bottom:16px;">
       <div style="font-weight:700;font-size:16px;">${esc(client.name)}</div>
-      <div style="color:var(--muted);font-size:13px;">${esc(client.phone)||'—'}</div>
+      <div style="color:var(--muted);font-size:13px;">${esc(client.phone)||'—'}${client.address ? ' · '+esc(client.address) : ''}</div>
       ${debt > 0.01 ? `<div style="margin-top:8px;color:var(--danger);font-weight:700;">${esc(t().debts.owes)} ${money(debt)} IQD
         <button class="btn-sm" style="background:var(--green-dark);color:#fff;margin-inline-start:8px;" onclick="promptDebtPayment(${client.id}, ${debt})">${esc(t().debts.recordPayment)}</button></div>` : ""}
     </div>
@@ -607,11 +639,11 @@ function renderClients(){
   const query = window.__clientQuery || "";
   const filtered = db.clients.filter(c=>(c.name+" "+(c.phone||"")).toLowerCase().includes(query.toLowerCase()));
   const editing = window.__editingClientId;
-  const f = window.__clientForm || {name:"", phone:""};
+  const f = window.__clientForm || {name:"", phone:"", address:""};
 
   const rows = filtered.length ? filtered.map(c=>`
     <div class="client-row">
-      <span onclick="viewClient(${c.id})" style="flex:1;cursor:pointer;">${esc(c.name)} <span style="color:var(--muted);">${esc(c.phone)||''}</span></span>
+      <span onclick="viewClient(${c.id})" style="flex:1;cursor:pointer;">${esc(c.name)} <span style="color:var(--muted);">${esc(c.phone)||''}${c.address ? ' · '+esc(c.address) : ''}</span></span>
       ${isAdmin() ? `<div style="display:flex;gap:6px;">
         <button class="btn-sm ghost" onclick="editClient(${c.id})">${esc(t().clients.edit)}</button>
         <button class="btn-sm" style="background:#FBE9E5;color:var(--danger);" onclick="deleteClient(${c.id})">&#128465;</button>
@@ -628,6 +660,7 @@ function renderClients(){
       <div class="form-row">
         <input id="c_name" placeholder="${esc(t().clients.namePh)}" value="${esc(f.name)}">
         <input id="c_phone" placeholder="${esc(t().clients.phonePh)}" value="${esc(f.phone)}">
+        <input id="c_address" placeholder="${esc(t().clients.addressPh)}" value="${esc(f.address)}">
       </div>
       <button class="btn" type="submit">+ ${editing ? esc(t().inv.save) : esc(t().clients.add)}</button>
     </form>
@@ -651,12 +684,13 @@ function bindClients(){
     e.preventDefault();
     const name = document.getElementById("c_name").value.trim();
     const phone = document.getElementById("c_phone").value.trim();
+    const address = document.getElementById("c_address").value.trim();
     if (!name){ showToast(t().clients.fillName, "danger"); return; }
     if (window.__editingClientId){
-      await fetch(`/api/clients/${window.__editingClientId}`, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({name, phone})});
+      await fetch(`/api/clients/${window.__editingClientId}`, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({name, phone, address})});
       showToast(t().clients.updated);
     } else {
-      await fetch("/api/clients", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({name, phone})});
+      await fetch("/api/clients", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({name, phone, address})});
       showToast(t().clients.added);
     }
     window.__editingClientId = null; window.__clientForm = null;
@@ -667,7 +701,7 @@ function bindClients(){
 function editClient(id){
   const c = db.clients.find(x=>x.id===id);
   window.__editingClientId = id;
-  window.__clientForm = {name:c.name, phone:c.phone||""};
+  window.__clientForm = {name:c.name, phone:c.phone||"", address:c.address||""};
   render();
 }
 function cancelClientEdit(){ window.__editingClientId = null; window.__clientForm = null; render(); }
@@ -832,6 +866,32 @@ async function resetUserPassword(id){
   const data = await res.json();
   if (data.error){ showToast(data.error, "danger"); return; }
   showToast(t().users.passwordUpdated);
+}
+
+function renderSettings(){
+  const s = db.settings || {address:"", phone:""};
+  return `
+  <div style="max-width:480px;">
+    <form class="card" id="settingsForm" style="padding:16px;">
+      <div style="font-weight:700;margin-bottom:10px;">${esc(t().settings.title)}</div>
+      <div class="form-row">
+        <input id="s_address" placeholder="${esc(t().settings.addressPh)}" value="${esc(s.address)}">
+        <input id="s_phone" placeholder="${esc(t().settings.phonePh)}" value="${esc(s.phone)}">
+      </div>
+      <button class="btn" type="submit">${esc(t().settings.save)}</button>
+    </form>
+  </div>`;
+}
+
+function bindSettings(){
+  document.getElementById("settingsForm").onsubmit = async e => {
+    e.preventDefault();
+    const address = document.getElementById("s_address").value.trim();
+    const phone = document.getElementById("s_phone").value.trim();
+    const res = await fetch("/api/settings", {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({address, phone})});
+    db.settings = await res.json();
+    showToast(t().settings.saved);
+  };
 }
 
 (async function init(){
