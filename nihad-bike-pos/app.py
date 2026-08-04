@@ -4,7 +4,7 @@ import sqlite3
 from datetime import datetime
 from functools import wraps
 
-from flask import Flask, g, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, g, jsonify, make_response, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -25,6 +25,17 @@ def load_secret_key():
 
 
 app.secret_key = load_secret_key()
+
+
+def format_dt(iso_str):
+    try:
+        dt = datetime.fromisoformat(iso_str)
+        return dt.strftime("%Y-%m-%d %H:%M")
+    except (TypeError, ValueError):
+        return iso_str
+
+
+app.jinja_env.filters["dtfmt"] = format_dt
 
 
 def get_db():
@@ -243,7 +254,9 @@ def logout():
 @app.route("/")
 @login_required
 def index():
-    return render_template("index.html", user={"username": session["username"], "role": session["role"]})
+    resp = make_response(render_template("index.html", user={"username": session["username"], "role": session["role"]}))
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return resp
 
 
 @app.route("/api/state")
@@ -625,6 +638,62 @@ def reset_user_password(user_id):
     db.execute("UPDATE users SET password_hash=? WHERE id=?", (generate_password_hash(password), user_id))
     db.commit()
     return jsonify({"ok": True})
+
+
+@app.route("/receipt-preview", methods=["POST"])
+@login_required
+def receipt_preview():
+    data = request.get_json(force=True)
+    lines_in = data.get("lines", [])
+    if not lines_in:
+        return "No items", 400
+
+    db = get_db()
+    client_id = data.get("clientId") or None
+    client_name = ""
+    client_phone = ""
+    client_address = ""
+    if client_id:
+        client = db.execute("SELECT * FROM clients WHERE id=?", (client_id,)).fetchone()
+        if client is not None:
+            client_name = client["name"]
+            client_phone = client["phone"] or ""
+            client_address = client["address"] or ""
+
+    address_override = data.get("address")
+    address = address_override.strip() if isinstance(address_override, str) and address_override.strip() else client_address
+
+    total = 0.0
+    lines_out = []
+    for line in lines_in:
+        item = db.execute("SELECT * FROM items WHERE id=?", (line.get("itemId"),)).fetchone()
+        if item is None:
+            continue
+        qty = int(line.get("qty") or 0)
+        price = float(line.get("price") if line.get("price") is not None else item["price"])
+        total += price * qty
+        lines_out.append({"name": item["name"], "model": item["model"] or "", "qty": qty, "price": price})
+
+    if not lines_out:
+        return "No valid items", 400
+
+    paid = data.get("paid")
+    paid = total if paid is None else float(paid)
+
+    sale_dict = {
+        "id": None,
+        "date": datetime.now().isoformat(),
+        "total": total,
+        "paid": paid,
+        "address": address,
+        "clientName": client_name,
+        "clientPhone": client_phone,
+        "lines": lines_out,
+        "isPreview": True,
+    }
+    settings_row = db.execute("SELECT * FROM shop_settings WHERE id=1").fetchone()
+    shop = {"address": settings_row["address"], "phone": settings_row["phone"]} if settings_row else {"address": "", "phone": ""}
+    return render_template("receipt.html", sale=sale_dict, shop=shop)
 
 
 @app.route("/receipt/<int:sale_id>")

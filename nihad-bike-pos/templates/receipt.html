@@ -39,11 +39,16 @@
     </div>
     <div class="meta">
       <img src="/static/logo.png" alt="" style="height:64px;margin-bottom:6px;">
-      <div>رقم الفاتورة: {{ '%06d' % sale.id }}</div>
-      <div>التاريخ: {{ sale.date }}</div>
+      <div>{% if sale.id %}رقم الفاتورة: {{ '%06d' % sale.id }}{% else %}معاينة غير نهائية{% endif %}</div>
+      <div>التاريخ: {{ sale.date | dtfmt }}</div>
     </div>
   </div>
   <div class="title">فاتورة بيع</div>
+  {% if sale.get('isPreview') %}
+  <div style="background:#FBE9E5;color:#B54A3F;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:700;margin-bottom:12px;">
+    معاينة فقط — لم يتم تأكيد البيع بعد
+  </div>
+  {% endif %}
   {% if sale.clientName %}<div class="client-line">العميل: {{ sale.clientName }}</div>{% endif %}
   {% if sale.address %}<div class="client-line">العنوان: {{ sale.address }}</div>{% endif %}
   {% if sale.clientPhone %}<div class="client-line">هاتف: {{ sale.clientPhone }}</div>{% endif %}

@@ -125,7 +125,8 @@ const AR = {
     outOfStock:n=>`${n} غير متوفرة حالياً`,pickOne:"أضف مادة واحدة على الأقل",onlyLeft:(max,n)=>`يوجد فقط ${max} من ${n}`,
     qtyMore:"يجب أن تكون الكمية أكثر من صفر",recorded:p=>`تم تسجيل البيع — الربح ${money(p)}`,recordedPlain:"تم تسجيل البيع بنجاح",
     noClient:"بدون عميل (زبون عابر)",paidPh:"المبلغ المدفوع",debtNeedsClient:"يجب اختيار عميل لتسجيل الدين",
-    remainingDebt:n=>`سيبقى ديناً: ${money(n)}`,addressPh:"العنوان (اختياري، يظهر على الفاتورة)"},
+    remainingDebt:n=>`سيبقى ديناً: ${money(n)}`,addressPh:"العنوان (اختياري، يظهر على الفاتورة)",
+    previewPrint:"معاينة وطباعة",popupBlocked:"يرجى السماح بالنوافذ المنبثقة لهذا الموقع"},
   debts:{recordPayment:"تسجيل دفعة",amountPh:"المبلغ المدفوع",pay:"تسجيل الدفعة",empty:"لا توجد ديون مستحقة حالياً.",
     owes:"مدين بـ",totalDebts:"إجمالي الديون المستحقة",paymentRecorded:"تم تسجيل الدفعة",
     needAmount:"أدخل مبلغاً صحيحاً",history:"سجل الدفعات",noPayments:"لا توجد دفعات مسجلة بعد."},
@@ -158,6 +159,7 @@ let db = {items:[],sales:[],purchases:[],clients:[],expenses:[],users:[],debtPay
 let cart = [];
 let costVisibleIds = new Set();
 let selectedClientId = "";
+let lastCompletedSaleId = null;
 let viewingClientId = null;
 let menuOpen = false;
 const LOW_STOCK = 5;
@@ -252,7 +254,7 @@ function renderTabs(){
 function toggleMenu(e){ e.stopPropagation(); menuOpen = !menuOpen; render(); }
 function closeMenu(){ menuOpen = false; render(); }
 function selectTab(id){
-  tab = id; menuOpen = false; cart = []; viewingClientId = null;
+  tab = id; menuOpen = false; cart = []; viewingClientId = null; lastCompletedSaleId = null;
   if (id === "users" && isAdmin()){ loadUsers().then(render); } else { render(); }
 }
 
@@ -495,7 +497,8 @@ function renderSell(){
         ${remaining > 0 ? `<div style="color:var(--danger);font-size:12px;margin-top:6px;">${esc(t().sale.remainingDebt(remaining))}${!selectedClientId ? " — " + esc(t().sale.debtNeedsClient) : ""}</div>` : ""}
       </div>
       <button class="btn" onclick="checkout()">&#128722; ${esc(t().sale.complete)}</button>
-      ${db.sales.length ? `<button class="btn ghost" onclick="printSale(${db.sales[db.sales.length-1].id})">&#128438; ${esc(t().receipt.print)}</button>` : ""}
+      ${cart.length ? `<button class="btn ghost" onclick="printPreview()">&#128438; ${esc(t().sale.previewPrint)}</button>` : ""}
+      ${lastCompletedSaleId ? `<button class="btn ghost" onclick="printSale(${lastCompletedSaleId})">&#128438; ${esc(t().receipt.print)}</button>` : ""}
     </div>
   </div>`;
 }
@@ -515,6 +518,7 @@ function addToCart(itemId){
   const item = db.items.find(i=>i.id===itemId);
   if (item.qty<=0){ showToast(t().sale.outOfStock(item.name), "danger"); return; }
   if (cart.find(l=>l.itemId===itemId)){ showToast(t().sale.alreadyIn); return; }
+  lastCompletedSaleId = null;
   cart.push({itemId:item.id, name:item.name, qty:1, price:item.price, cost:item.cost, maxQty:item.qty});
   window.__sellQuery = "";
   render();
@@ -537,6 +541,7 @@ async function checkout(){
   const data = await res.json();
   if (data.error){ showToast(data.error, "danger"); return; }
   showToast(isAdmin() ? t().sale.recorded(data.profit) : t().sale.recordedPlain);
+  lastCompletedSaleId = data.id;
   cart = [];
   selectedClientId = "";
   window.__paidAmount = null;
@@ -547,6 +552,24 @@ async function checkout(){
 }
 
 function printSale(id){ window.open(`/receipt/${id}`, "_blank"); }
+
+async function printPreview(){
+  if (!cart.length) return;
+  const total = cart.reduce((s,l)=>s+Number(l.price||0)*Number(l.qty||0),0);
+  const paid = window.__paidManuallySet ? Number(window.__paidAmount) || 0 : total;
+  const payload = {
+    lines: cart.map(l=>({itemId:l.itemId, qty:l.qty, price:l.price})),
+    clientId: selectedClientId || null,
+    paid,
+    address: window.__saleAddress || ""
+  };
+  const res = await fetch("/receipt-preview", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
+  const html = await res.text();
+  const win = window.open("", "_blank");
+  if (!win){ showToast(t().sale.popupBlocked, "danger"); return; }
+  win.document.write(html);
+  win.document.close();
+}
 
 function renderBuy(){
   const mode = window.__buyMode || "existing";
