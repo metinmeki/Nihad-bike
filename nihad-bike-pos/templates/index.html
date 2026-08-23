@@ -547,7 +547,14 @@ function bindSell(){
 
 function addToCart(itemId){
   const item = db.items.find(i=>i.id===itemId);
-  if (item.qty<=0){ showToast(t().sale.outOfStock(item.name), "danger"); return; }
+  if (item.qty<=0){
+    if (isAdmin() && confirm(`${item.name}\nغير متوفرة حالياً — هل تريد الذهاب لتزويدها؟`)){
+      goToBuyFromSell(itemId);
+    } else {
+      showToast(t().sale.outOfStock(item.name), "danger");
+    }
+    return;
+  }
   if (cart.find(l=>l.itemId===itemId)){ showToast(t().sale.alreadyIn); return; }
   lastCompletedSaleId = null;
   cart.push({itemId:item.id, name:item.name, qty:1, price:item.price, cost:item.cost, maxQty:item.qty});
@@ -643,6 +650,18 @@ function goToInventoryFromSell(){
   window.__savedAddressManuallySet = window.__addressManuallySet;
   selectTab('inventory');
 }
+function goToBuyFromSell(itemId){
+  window.__returnToSell = true;
+  window.__savedCart = cart.slice();
+  window.__savedClientId = selectedClientId;
+  window.__savedPaidAmount = window.__paidAmount;
+  window.__savedPaidManuallySet = window.__paidManuallySet;
+  window.__savedSaleAddress = window.__saleAddress;
+  window.__savedAddressManuallySet = window.__addressManuallySet;
+  window.__buyMode = "existing";
+  window.__buyForm = {itemId: String(itemId), qty:"", cost:"", newName:"", newModel:"", newPrice:""};
+  selectTab('buy');
+}
 function setBuyMode(mode){ window.__buyMode = mode; render(); }
 
 function bindBuy(){
@@ -668,6 +687,22 @@ function bindBuy(){
     const data = await res.json();
     if (data.error){ showToast(data.error, "danger"); return; }
     showToast(mode==="existing" ? t().buy.restocked(qty, data.name) : t().buy.stocked(data.name));
+    if (window.__returnToSell){
+      window.__returnToSell = false;
+      window.__buyForm = null;
+      await loadState();
+      tab = "sell";
+      if (window.__savedCart){
+        cart = window.__savedCart; window.__savedCart = null;
+        selectedClientId = window.__savedClientId || ""; window.__savedClientId = null;
+        window.__paidAmount = window.__savedPaidAmount; window.__savedPaidAmount = null;
+        window.__paidManuallySet = window.__savedPaidManuallySet; window.__savedPaidManuallySet = null;
+        window.__saleAddress = window.__savedSaleAddress || ""; window.__savedSaleAddress = null;
+        window.__addressManuallySet = window.__savedAddressManuallySet; window.__savedAddressManuallySet = null;
+      }
+      render();
+      return;
+    }
     window.__buyForm = null;
     await loadState(); render();
   };
