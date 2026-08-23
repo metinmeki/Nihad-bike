@@ -126,7 +126,9 @@ const AR = {
     qtyMore:"يجب أن تكون الكمية أكثر من صفر",recorded:p=>`تم تسجيل البيع — الربح ${money(p)}`,recordedPlain:"تم تسجيل البيع بنجاح",
     noClient:"بدون عميل (زبون عابر)",paidPh:"المبلغ المدفوع",debtNeedsClient:"يجب اختيار عميل لتسجيل الدين",
     remainingDebt:n=>`سيبقى ديناً: ${money(n)}`,addressPh:"العنوان (اختياري، يظهر على الفاتورة)",
-    previewPrint:"معاينة وطباعة",popupBlocked:"يرجى السماح بالنوافذ المنبثقة لهذا الموقع"},
+    previewPrint:"معاينة وطباعة",popupBlocked:"يرجى السماح بالنوافذ المنبثقة لهذا الموقع",
+    noItemsTitle:"المخزون فارغ",noItemsMsg:"لا توجد مواد في المخزون. أضف مواداً أولاً لتتمكن من إنشاء فاتورة.",
+    goAddItem:"إضافة مادة إلى المخزون",addNewItem:"+ مادة جديدة",cancelSale:"إلغاء"},
   debts:{recordPayment:"تسجيل دفعة",amountPh:"المبلغ المدفوع",pay:"تسجيل الدفعة",empty:"لا توجد ديون مستحقة حالياً.",
     owes:"مدين بـ",totalDebts:"إجمالي الديون المستحقة",paymentRecorded:"تم تسجيل الدفعة",
     needAmount:"أدخل مبلغاً صحيحاً",history:"سجل الدفعات",noPayments:"لا توجد دفعات مسجلة بعد."},
@@ -426,6 +428,22 @@ function bindInventory(){
     } else {
       await fetch("/api/items", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
       showToast(t().inv.added);
+      if (window.__returnToSell){
+        window.__returnToSell = false;
+        window.__editingId = null; window.__invForm = null;
+        await loadState();
+        tab = "sell";
+        if (window.__savedCart){
+          cart = window.__savedCart; window.__savedCart = null;
+          selectedClientId = window.__savedClientId || ""; window.__savedClientId = null;
+          window.__paidAmount = window.__savedPaidAmount; window.__savedPaidAmount = null;
+          window.__paidManuallySet = window.__savedPaidManuallySet; window.__savedPaidManuallySet = null;
+          window.__saleAddress = window.__savedSaleAddress || ""; window.__savedSaleAddress = null;
+          window.__addressManuallySet = window.__savedAddressManuallySet; window.__savedAddressManuallySet = null;
+        }
+        render();
+        return;
+      }
     }
     window.__editingId = null; window.__invForm = null;
     await loadState(); render();
@@ -446,6 +464,17 @@ async function deleteItem(id){
 }
 
 function renderSell(){
+  if (db.items.length === 0){
+    return `<div class="card" style="padding:40px;text-align:center;max-width:480px;margin:0 auto;">
+      <div style="font-size:48px;margin-bottom:16px;">&#128230;</div>
+      <div style="font-weight:700;font-size:17px;margin-bottom:8px;">${esc(t().sale.noItemsTitle)}</div>
+      <div style="color:var(--muted);margin-bottom:24px;font-size:14px;">${esc(t().sale.noItemsMsg)}</div>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+        <button class="btn" style="width:auto;" onclick="goToInventoryFromSell()">+ ${esc(t().sale.goAddItem)}</button>
+        <button class="btn ghost" style="width:auto;" onclick="selectTab('dashboard')">${esc(t().sale.cancelSale)}</button>
+      </div>
+    </div>`;
+  }
   const query = window.__sellQuery || "";
   const results = query ? db.items.filter(i=>(i.name+" "+(i.model||"")).toLowerCase().includes(query.toLowerCase())) : db.items;
   const resultsHtml = results.length ? `<div class="card" style="margin-top:8px;max-height:340px;overflow-y:auto;">${results.map(i=>`
@@ -481,7 +510,9 @@ function renderSell(){
       <div class="card" style="padding:12px;">
         <select id="sellClient" style="margin-bottom:10px;">${clientOptions}</select>
         <input id="sellAddress" placeholder="${esc(t().sale.addressPh)}" value="${esc(saleAddress)}" style="margin-bottom:10px;">
-        <div class="search-box" style="padding:0;">&#128269; <input id="sellSearch" placeholder="${esc(t().sale.search)}" value="${esc(query)}"></div>
+        <div class="search-box" style="padding:0;">&#128269; <input id="sellSearch" placeholder="${esc(t().sale.search)}" value="${esc(query)}">
+          ${isAdmin() ? `<button class="btn-sm ghost" style="white-space:nowrap;flex-shrink:0;" onclick="goToInventoryFromSell()">${esc(t().sale.addNewItem)}</button>` : ""}
+        </div>
         ${resultsHtml}
       </div>
       <div class="card" style="margin-top:12px;">
@@ -602,6 +633,16 @@ function renderBuy(){
   </div>`;
 }
 
+function goToInventoryFromSell(){
+  window.__returnToSell = true;
+  window.__savedCart = cart.slice();
+  window.__savedClientId = selectedClientId;
+  window.__savedPaidAmount = window.__paidAmount;
+  window.__savedPaidManuallySet = window.__paidManuallySet;
+  window.__savedSaleAddress = window.__saleAddress;
+  window.__savedAddressManuallySet = window.__addressManuallySet;
+  selectTab('inventory');
+}
 function setBuyMode(mode){ window.__buyMode = mode; render(); }
 
 function bindBuy(){
