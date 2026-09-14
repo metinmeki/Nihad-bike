@@ -128,7 +128,9 @@ const AR = {
     remainingDebt:n=>`سيبقى ديناً: ${money(n)}`,addressPh:"العنوان (اختياري، يظهر على الفاتورة)",
     previewPrint:"معاينة وطباعة",popupBlocked:"يرجى السماح بالنوافذ المنبثقة لهذا الموقع",
     noItemsTitle:"المخزون فارغ",noItemsMsg:"لا توجد مواد في المخزون. أضف مواداً أولاً لتتمكن من إنشاء فاتورة.",
-    goAddItem:"إضافة مادة إلى المخزون",addNewItem:"+ مادة جديدة",cancelSale:"إلغاء"},
+    goAddItem:"إضافة مادة إلى المخزون",addNewItem:"+ مادة جديدة",cancelSale:"إلغاء",
+    archive:"حفظ للاحقاً",pendingTitle:"طلبات معلقة",resume:"استئناف",
+    archived:"تم حفظ الطلب — يمكنك استئنافه لاحقاً",archiveNotePh:"ملاحظة (اسم العميل أو أي تذكير):"},
   debts:{recordPayment:"تسجيل دفعة",amountPh:"المبلغ المدفوع",pay:"تسجيل الدفعة",empty:"لا توجد ديون مستحقة حالياً.",
     owes:"مدين بـ",totalDebts:"إجمالي الديون المستحقة",paymentRecorded:"تم تسجيل الدفعة",
     needAmount:"أدخل مبلغاً صحيحاً",history:"سجل الدفعات",noPayments:"لا توجد دفعات مسجلة بعد."},
@@ -529,7 +531,9 @@ function renderSell(){
       </div>
       <button class="btn" onclick="checkout()">&#128722; ${esc(t().sale.complete)}</button>
       ${cart.length ? `<button class="btn ghost" onclick="printPreview()">&#128438; ${esc(t().sale.previewPrint)}</button>` : ""}
+      ${cart.length ? `<button class="btn ghost" onclick="archiveCurrentSale()">&#128203; ${esc(t().sale.archive)}</button>` : ""}
       ${lastCompletedSaleId ? `<button class="btn ghost" onclick="printSale(${lastCompletedSaleId})">&#128438; ${esc(t().receipt.print)}</button>` : ""}
+      ${renderPendingSales()}
     </div>
   </div>`;
 }
@@ -638,6 +642,60 @@ function renderBuy(){
       <button class="btn" type="submit">&#8595; ${esc(t().buy.record)}</button>
     </form>
   </div>`;
+}
+
+function getPendingSales(){ try{ return JSON.parse(localStorage.getItem('pendingSales')||'[]'); }catch(e){ return []; } }
+function savePendingSalesStore(list){ localStorage.setItem('pendingSales', JSON.stringify(list)); }
+
+function renderPendingSales(){
+  const list = getPendingSales();
+  if (!list.length) return "";
+  return `<div class="card" style="padding:12px;margin-top:4px;">
+    <div style="font-weight:700;font-size:13px;margin-bottom:8px;">&#128203; ${esc(t().sale.pendingTitle)} (${list.length})</div>
+    ${list.map(p=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.note||'—')}</div>
+          <div style="font-size:11px;color:var(--muted);">${p.cart.length} مواد · ${fmtDate(p.createdAt)}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button class="btn-sm" style="background:var(--green-dark);color:#fff;" onclick="resumePendingSale(${p.id})">${esc(t().sale.resume)}</button>
+          <button class="btn-sm" style="background:#FBE9E5;color:var(--danger);" onclick="deletePendingSale(${p.id})">&#128465;</button>
+        </div>
+      </div>`).join("")}
+  </div>`;
+}
+
+function archiveCurrentSale(){
+  if (!cart.length){ showToast(t().sale.pickOne, "danger"); return; }
+  const note = prompt(t().sale.archiveNotePh, "");
+  if (note === null) return;
+  const pending = {
+    id: Date.now(), note: note.trim(),
+    cart: cart.slice(), clientId: selectedClientId,
+    paidAmount: window.__paidAmount, paidManuallySet: window.__paidManuallySet,
+    saleAddress: window.__saleAddress||"", addressManuallySet: window.__addressManuallySet,
+    createdAt: new Date().toISOString()
+  };
+  const list = getPendingSales(); list.push(pending); savePendingSalesStore(list);
+  cart = []; selectedClientId = "";
+  window.__paidAmount = null; window.__paidManuallySet = false;
+  window.__saleAddress = ""; window.__addressManuallySet = false;
+  showToast(t().sale.archived); render();
+}
+
+function resumePendingSale(id){
+  const list = getPendingSales();
+  const p = list.find(x=>x.id===id); if (!p) return;
+  cart = p.cart; selectedClientId = p.clientId||"";
+  window.__paidAmount = p.paidAmount; window.__paidManuallySet = p.paidManuallySet;
+  window.__saleAddress = p.saleAddress||""; window.__addressManuallySet = p.addressManuallySet;
+  savePendingSalesStore(list.filter(x=>x.id!==id));
+  render();
+}
+
+function deletePendingSale(id){
+  savePendingSalesStore(getPendingSales().filter(x=>x.id!==id)); render();
 }
 
 function goToInventoryFromSell(){
